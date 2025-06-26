@@ -1,5 +1,5 @@
-// Script de contenu pour extraire les données SEO - Klipboard by Koeki
-console.log('🔧 Klipboard: Script chargé');
+// Script de contenu amélioré pour extraire les données SEO - Klipboard by Koeki
+console.log('🔧 Klipboard: Script chargé - Version améliorée');
 
 class SEODataExtractor {
   constructor() {
@@ -18,7 +18,6 @@ class SEODataExtractor {
     console.log('🔧 Klipboard: Initialisation terminée');
   }
 
-  // Nouveau panneau de debug visuel
   addDebugPanel() {
     const debugPanel = document.createElement('div');
     debugPanel.id = 'klipboard-debug';
@@ -45,7 +44,6 @@ class SEODataExtractor {
     document.body.appendChild(debugPanel);
   }
 
-  // NOUVEAU : Inspecteur visuel qui surligne les boutons
   addVisualInspector() {
     const inspectorPanel = document.createElement('div');
     inspectorPanel.id = 'klipboard-inspector';
@@ -63,210 +61,693 @@ class SEODataExtractor {
       z-index: 99997;
     `;
     inspectorPanel.innerHTML = `
-      <div style="color: #ffff00; font-weight: bold; margin-bottom: 10px;">🔍 Inspecteur Visuel</div>
-      <button id="highlight-buttons" style="width: 100%; padding: 8px; margin-bottom: 10px; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer;">
-        🎯 Surligner TOUS les boutons cliquables
+      <div style="color: #ffff00; font-weight: bold; margin-bottom: 10px;">🔍 Inspecteur ThotSEO</div>
+      <button id="find-thotseo-sections" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        🎯 Trouver sections ThotSEO
       </button>
-      <button id="test-manual-clicks" style="width: 100%; padding: 8px; margin-bottom: 10px; background: #44ff44; color: black; border: none; border-radius: 4px; cursor: pointer;">
-        👆 Test clics manuels sur sections
+      <button id="targeted-expansion" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #44ff44; color: black; border: none; border-radius: 4px; cursor: pointer;">
+        📂 Expansion ciblée ThotSEO
       </button>
-      <button id="show-dom-structure" style="width: 100%; padding: 8px; background: #4444ff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-        🏗️ Montrer structure DOM
+      <button id="test-nlp-button" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #ff8800; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        🧠 Tester bouton NLP
+      </button>
+      <button id="smart-scan" style="width: 100%; padding: 8px; background: #4444ff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        🔬 Scan intelligent DOM
       </button>
       <div id="inspector-results" style="margin-top: 10px; font-size: 10px; max-height: 200px; overflow-y: auto;"></div>
     `;
     document.body.appendChild(inspectorPanel);
 
     // Event listeners pour l'inspecteur
-    document.getElementById('highlight-buttons').addEventListener('click', () => {
-      this.highlightAllClickableElements();
+    document.getElementById('find-thotseo-sections').addEventListener('click', () => {
+      this.findThotSEOSections();
     });
 
-    document.getElementById('test-manual-clicks').addEventListener('click', () => {
-      this.testManualClicks();
+    document.getElementById('targeted-expansion').addEventListener('click', () => {
+      this.targetedThotSEOExpansion();
     });
 
-    document.getElementById('show-dom-structure').addEventListener('click', () => {
-      this.showDOMStructure();
+    document.getElementById('test-nlp-button').addEventListener('click', () => {
+      this.testNLPButton();
+    });
+
+    document.getElementById('smart-scan').addEventListener('click', () => {
+      this.smartDOMScan();
     });
   }
 
-  // NOUVEAU : Surligner tous les éléments cliquables
-  highlightAllClickableElements() {
-    this.logDebug('=== SURLIGNAGE DES ÉLÉMENTS CLIQUABLES ===', 'warning');
+  // NOUVEAU : Scan intelligent du DOM pour trouver les sections
+  smartDOMScan() {
+    this.logDebug('=== SCAN INTELLIGENT DOM ===', 'warning');
+    this.clearInspectorResults();
     
-    // Supprimer les anciens surlignages
-    document.querySelectorAll('.klipboard-highlight').forEach(el => {
-      el.classList.remove('klipboard-highlight');
-      el.style.border = '';
-      el.style.boxShadow = '';
-    });
-
-    // Trouver TOUS les éléments potentiellement cliquables
-    const clickableElements = [];
-    
-    // 1. Tous les buttons
-    document.querySelectorAll('button').forEach(btn => {
-      clickableElements.push({element: btn, type: 'button', text: btn.textContent.trim()});
-    });
-
-    // 2. Éléments avec cursor: pointer
-    document.querySelectorAll('*').forEach(el => {
-      const style = window.getComputedStyle(el);
-      if (style.cursor === 'pointer' && el.tagName !== 'BUTTON') {
-        clickableElements.push({element: el, type: 'cursor-pointer', text: el.textContent.trim().substring(0, 30)});
-      }
-    });
-
-    // 3. Éléments avec événements onclick
-    document.querySelectorAll('*').forEach(el => {
-      if (el.onclick || el.getAttribute('onclick')) {
-        clickableElements.push({element: el, type: 'onclick', text: el.textContent.trim().substring(0, 30)});
-      }
-    });
-
-    // 4. Éléments avec data-toggle, data-collapse, etc.
-    document.querySelectorAll('[data-toggle], [data-collapse], [aria-expanded], [role="button"]').forEach(el => {
-      clickableElements.push({element: el, type: 'data-attribute', text: el.textContent.trim().substring(0, 30)});
-    });
-
-    this.logDebug(`Trouvé ${clickableElements.length} éléments cliquables`, 'info');
-
-    // Surligner chaque élément avec une couleur différente
-    const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
-    
-    clickableElements.forEach((item, index) => {
-      const color = colors[index % colors.length];
-      item.element.style.border = `3px solid ${color}`;
-      item.element.style.boxShadow = `0 0 10px ${color}`;
-      item.element.classList.add('klipboard-highlight');
-      
-      // Ajouter un label
-      const label = document.createElement('div');
-      label.style.cssText = `
-        position: absolute;
-        background: ${color};
-        color: white;
-        padding: 2px 5px;
-        font-size: 10px;
-        font-weight: bold;
-        z-index: 99999;
-        border-radius: 3px;
-        pointer-events: none;
-      `;
-      label.textContent = `${index + 1}: ${item.type}`;
-      
-      const rect = item.element.getBoundingClientRect();
-      label.style.left = `${rect.left + window.scrollX}px`;
-      label.style.top = `${rect.top + window.scrollY - 20}px`;
-      
-      document.body.appendChild(label);
-      
-      // Supprimer le label après 10 secondes
-      setTimeout(() => {
-        if (label.parentNode) label.remove();
-      }, 10000);
-
-      this.updateInspectorResults(`${index + 1}. ${item.type}: "${item.text}"`);
-    });
-
-    this.logDebug('Surlignage terminé - regardez les éléments colorés !', 'success');
-  }
-
-  // NOUVEAU : Test clics manuels
-  testManualClicks() {
-    this.logDebug('=== TEST CLICS MANUELS ===', 'warning');
-    
-    // Rechercher spécifiquement les sections de thot-seo
-    const sectionsToFind = [
-      { name: 'Intention de recherche', keywords: ['intention'] },
-      { name: 'Tous les termes clés', keywords: ['termes', 'clés'] },
-      { name: 'Mes prompts', keywords: ['prompts'] },
-      { name: 'Entités NLP', keywords: ['entités', 'nlp'] }
+    const targetSections = [
+      'intention de recherche',
+      'tous les termes clés',
+      'mes prompts',
+      'entités nlp',
+      'groupes de mots',
+      'maillage interne',
+      'cannibalisation',
+      'concurrents'
     ];
 
-    sectionsToFind.forEach(section => {
-      this.logDebug(`--- Recherche section: ${section.name} ---`, 'info');
-      
-      // Chercher les éléments contenant ces mots-clés
-      const elements = Array.from(document.querySelectorAll('*')).filter(el => {
-        const text = el.textContent.toLowerCase();
-        return section.keywords.some(keyword => text.includes(keyword)) && 
-               el.offsetParent !== null && 
-               el.textContent.trim().length < 100; // Pas trop de texte (probablement un titre)
-      });
+    const foundSections = new Map();
 
-      this.logDebug(`Trouvé ${elements.length} éléments pour "${section.name}"`, 'info');
+    // Scanner tous les éléments pour trouver les sections
+    document.querySelectorAll('*').forEach(element => {
+      const text = element.textContent.toLowerCase().trim();
       
-      elements.forEach((el, i) => {
-        // Chercher un bouton + ou toggle près de cet élément
-        const parent = el.closest('div, section, article');
-        if (parent) {
-          const nearbyButtons = parent.querySelectorAll('button, [role="button"], .toggle, [class*="toggle"], [class*="expand"], [data-toggle]');
-          
-          nearbyButtons.forEach(btn => {
-            // Surligner le bouton potentiel
-            btn.style.border = '3px solid orange';
-            btn.style.boxShadow = '0 0 15px orange';
-            
-            this.logDebug(`Bouton potentiel trouvé pour "${section.name}": "${btn.textContent.trim()}" (${btn.tagName})`, 'warning');
-            this.updateInspectorResults(`${section.name}: Bouton "${btn.textContent.trim()}"`);
-            
-            // Essayer de cliquer
-            setTimeout(() => {
-              const beforeCount = document.querySelectorAll('*').length;
-              btn.click();
+      targetSections.forEach(section => {
+        if (text.includes(section) && text.length < 100) { // Éviter le contenu trop long
+          if (!foundSections.has(section) || foundSections.get(section).textContent.length > text.length) {
+            foundSections.set(section, element);
+          }
+        }
+      });
+    });
+
+    this.updateInspectorResults(`Sections trouvées: ${foundSections.size}`);
+    
+    foundSections.forEach((element, sectionName) => {
+      this.updateInspectorResults(`📍 ${sectionName}: ${element.tagName}.${element.className}`);
+      
+      // Chercher les boutons d'expansion près de cette section
+      this.findExpandButtonsNear(element, sectionName);
+    });
+  }
+
+  // Trouver les boutons d'expansion près d'un élément
+  findExpandButtonsNear(element, sectionName) {
+    const searchRadius = [
+      element,
+      element.parentElement,
+      element.parentElement?.parentElement,
+      element.closest('div'),
+      element.closest('[class*="section"]'),
+      element.closest('[class*="panel"]')
+    ].filter(Boolean);
+
+    searchRadius.forEach(container => {
+      // Chercher différents types de boutons d'expansion
+      const expandSelectors = [
+        'button:contains("+")',
+        '[class*="expand"]',
+        '[class*="toggle"]',
+        '[class*="collapse"]',
+        '[data-toggle]',
+        '[aria-expanded]',
+        'button[title*="expand"]',
+        'button[title*="ouvrir"]',
+        '.fa-plus',
+        '.fa-chevron'
+      ];
+
+      expandSelectors.forEach(selector => {
+        try {
+          let buttons;
+          if (selector.includes(':contains')) {
+            // Pour les sélecteurs :contains, on fait une recherche manuelle
+            buttons = Array.from(container.querySelectorAll('button')).filter(btn => 
+              btn.textContent.trim() === '+' || 
+              btn.textContent.trim() === '▶' ||
+              btn.textContent.trim() === '►' ||
+              btn.innerHTML.includes('fa-plus') ||
+              btn.innerHTML.includes('fa-chevron')
+            );
+          } else {
+            buttons = container.querySelectorAll(selector);
+          }
+
+          if (buttons.length > 0) {
+            buttons.forEach(btn => {
+              this.updateInspectorResults(`  🔘 Bouton trouvé: "${btn.textContent.trim()}" (${btn.className})`);
               
-              setTimeout(() => {
-                const afterCount = document.querySelectorAll('*').length;
-                const diff = afterCount - beforeCount;
-                
-                if (diff > 0) {
-                  this.logDebug(`✅ SUCCÈS! Bouton "${btn.textContent.trim()}" a ajouté ${diff} éléments`, 'success');
-                  btn.style.border = '5px solid lime';
-                } else {
-                  this.logDebug(`⚪ Bouton "${btn.textContent.trim()}" sans effet`, 'info');
-                }
-              }, 500);
-            }, i * 1000); // Délai entre les tests
-          });
+              // Surligner le bouton
+              btn.style.border = '3px solid lime';
+              btn.style.boxShadow = '0 0 15px lime';
+              
+              // Ajouter un listener temporaire pour tester
+              const testClick = () => {
+                this.logDebug(`Test clic sur bouton pour "${sectionName}"`, 'warning');
+                btn.click();
+                setTimeout(() => {
+                  btn.style.border = '3px solid gold';
+                  this.updateInspectorResults(`  ✅ Bouton testé pour "${sectionName}"`);
+                }, 500);
+              };
+              
+              btn.addEventListener('click', testClick, { once: true });
+            });
+          }
+        } catch (e) {
+          // Ignorer les erreurs de sélecteur
         }
       });
     });
   }
 
-  // NOUVEAU : Montrer structure DOM
-  showDOMStructure() {
-    this.logDebug('=== STRUCTURE DOM ===', 'warning');
-    this.updateInspectorResults('--- STRUCTURE DOM ---');
+  // NOUVEAU : Trouver spécifiquement les sections pliées de ThotSEO - VERSION CORRIGÉE
+  findThotSEOSections() {
+    this.logDebug('=== RECHERCHE SECTIONS THOTSEO V2 ===', 'warning');
+    this.clearInspectorResults();
     
-    // Analyser la structure des sections importantes
-    const importantSections = document.querySelectorAll('h1, h2, h3, h4, h5, h6, [class*="section"], [class*="title"], [class*="header"]');
+    const sectionsFound = [];
     
-    importantSections.forEach((section, i) => {
-      if (section.textContent.toLowerCase().includes('intention') ||
-          section.textContent.toLowerCase().includes('prompts') ||
-          section.textContent.toLowerCase().includes('termes') ||
-          section.textContent.toLowerCase().includes('entités')) {
+    // 1. Chercher les H2 avec attribut onclick (structure ThotSEO)
+    const clickableHeaders = document.querySelectorAll('h2[onclick], h3[onclick], [onclick*="open_close"]');
+    
+    this.updateInspectorResults(`Headers cliquables trouvés: ${clickableHeaders.length}`);
+    
+    clickableHeaders.forEach(header => {
+      const text = header.textContent.toLowerCase();
+      const onclick = header.getAttribute('onclick');
+      
+      this.updateInspectorResults(`Header: "${text.substring(0, 30)}..." onclick="${onclick}"`);
+      
+      // Mapping des sections importantes
+      const sectionMappings = [
+        { keywords: ['intention', 'recherche'], name: 'intention de recherche' },
+        { keywords: ['termes', 'clés', 'keywords'], name: 'tous les termes clés' },
+        { keywords: ['prompts'], name: 'mes prompts' },
+        { keywords: ['entités', 'nlp'], name: 'entités nlp' },
+        { keywords: ['maillage', 'interne'], name: 'maillage interne' },
+        { keywords: ['cannibalisation'], name: 'cannibalisation' },
+        { keywords: ['concurrents'], name: 'concurrents' },
+        { keywords: ['idées', 'sujets'], name: 'idées de sujets' }
+      ];
+      
+      sectionMappings.forEach(mapping => {
+        const matches = mapping.keywords.some(keyword => 
+          text.includes(keyword) || onclick.includes(keyword)
+        );
         
-        this.updateInspectorResults(`Section ${i + 1}: ${section.tagName} "${section.textContent.trim().substring(0, 50)}"`);
-        this.updateInspectorResults(`  Classes: ${section.className}`);
-        this.updateInspectorResults(`  ID: ${section.id}`);
-        
-        // Chercher les boutons dans le parent
-        const parent = section.parentElement;
-        if (parent) {
-          const buttons = parent.querySelectorAll('button, [role="button"]');
-          buttons.forEach(btn => {
-            this.updateInspectorResults(`  Bouton trouvé: "${btn.textContent.trim()}" (${btn.className})`);
+        if (matches) {
+          this.updateInspectorResults(`✅ Section trouvée: "${mapping.name}"`);
+          
+          // Trouver la div associée (style display: none)
+          const associatedDiv = this.findAssociatedDiv(header);
+          
+          sectionsFound.push({
+            section: mapping.name,
+            header: header,
+            onclick: onclick,
+            associatedDiv: associatedDiv
           });
         }
-        this.updateInspectorResults('---');
+      });
+    });
+    
+    this.updateInspectorResults(`--- RÉSULTAT: ${sectionsFound.length} sections trouvées ---`);
+    return sectionsFound;
+  }
+
+  // Trouver la div associée à un header
+  findAssociatedDiv(header) {
+    // 1. Chercher la div suivante avec display: none
+    let nextElement = header.nextElementSibling;
+    while (nextElement) {
+      if (nextElement.tagName === 'DIV') {
+        const style = window.getComputedStyle(nextElement);
+        if (style.display === 'none' || nextElement.style.display === 'none') {
+          return nextElement;
+        }
+      }
+      nextElement = nextElement.nextElementSibling;
+    }
+    
+    // 2. Chercher par ID (basé sur l'onclick)
+    const onclick = header.getAttribute('onclick');
+    if (onclick) {
+      // Extraire l'ID de la fonction (ex: open_close_keywords_all() -> keywords_all)
+      const match = onclick.match(/open_close_(\w+)/);
+      if (match) {
+        const targetId = match[1];
+        const targetDiv = document.getElementById(`liste_${targetId}`) || 
+                         document.getElementById(targetId) ||
+                         document.getElementById(`${targetId}_content`);
+        if (targetDiv) {
+          return targetDiv;
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  // CORRIGÉ : Expansion ciblée sur ThotSEO - VERSION HEADER ONCLICK
+  async targetedThotSEOExpansion() {
+    this.logDebug('=== EXPANSION CIBLÉE THOTSEO V2 ===', 'warning');
+    
+    const sectionsData = this.findThotSEOSections();
+    
+    if (sectionsData.length === 0) {
+      this.logDebug('Aucune section ThotSEO trouvée avec onclick', 'error');
+      this.updateInspectorResults('❌ Aucune section avec onclick trouvée');
+      return;
+    }
+    
+    this.updateInspectorResults(`Sections à déplier: ${sectionsData.length}`);
+    
+    for (let i = 0; i < sectionsData.length; i++) {
+      const {section, header, onclick, associatedDiv} = sectionsData[i];
+      
+      this.logDebug(`Dépliage section ${i + 1}: "${section}"`, 'warning');
+      this.updateInspectorResults(`Dépliage: ${section}`);
+      
+      try {
+        // Surligner le header avant clic
+        header.style.border = '3px solid orange';
+        header.style.backgroundColor = 'rgba(255, 165, 0, 0.3)';
+        
+        // Vérifier l'état initial
+        let beforeState = 'unknown';
+        if (associatedDiv) {
+          const beforeDisplay = window.getComputedStyle(associatedDiv).display;
+          beforeState = beforeDisplay === 'none' ? 'fermé' : 'ouvert';
+          this.updateInspectorResults(`  État initial: ${beforeState}`);
+        }
+        
+        // Cliquer sur le header (exécuter la fonction onclick)
+        header.click();
+        
+        // Attendre l'animation
+        await this.wait(1000);
+        
+        // Vérifier si ça a fonctionné
+        let afterState = 'unknown';
+        let success = false;
+        
+        if (associatedDiv) {
+          const afterDisplay = window.getComputedStyle(associatedDiv).display;
+          afterState = afterDisplay === 'none' ? 'fermé' : 'ouvert';
+          success = beforeState !== afterState;
+        } else {
+          // Si pas de div associée trouvée, vérifier s'il y a plus d'éléments visibles
+          const visibleElements = document.querySelectorAll('*:not([style*="display: none"])').length;
+          success = true; // On suppose que ça a marché
+        }
+        
+        if (success) {
+          this.logDebug(`✅ Section "${section}" basculée (${beforeState} → ${afterState})`, 'success');
+          this.updateInspectorResults(`  ✅ Basculée (${beforeState} → ${afterState})`);
+          header.style.backgroundColor = 'rgba(0, 255, 0, 0.3)';
+        } else {
+          this.logDebug(`⚠️ Section "${section}" - pas de changement`, 'warning');
+          this.updateInspectorResults(`  ⚠️ Pas de changement`);
+          header.style.backgroundColor = 'rgba(255, 255, 0, 0.3)';
+        }
+        
+      } catch (error) {
+        this.logDebug(`❌ Erreur dépliage "${section}": ${error.message}`, 'error');
+        this.updateInspectorResults(`  ❌ Erreur: ${error.message}`);
+        header.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+      }
+    }
+    
+    this.logDebug('Expansion ciblée terminée', 'success');
+  }
+
+  // Trouver tous les boutons d'expansion possibles - VERSION AMÉLIORÉE
+  findAllExpandButtons() {
+    const buttons = [];
+    this.logDebug('Recherche des vrais boutons d\'expansion...', 'info');
+    
+    // 1. SPÉCIFIQUE : Chercher les boutons "+" dans la sidebar gauche
+    const sidebarSelectors = [
+      '.sidebar',
+      '.left-panel', 
+      '.menu-left',
+      '[class*="sidebar"]',
+      '[class*="nav"]',
+      '#sidebar',
+      '.navigation'
+    ];
+    
+    sidebarSelectors.forEach(sidebarSelector => {
+      try {
+        const sidebar = document.querySelector(sidebarSelector);
+        if (sidebar) {
+          this.logDebug(`Sidebar trouvée: ${sidebarSelector}`, 'success');
+          
+          // Chercher les "+" dans cette sidebar
+          const plusButtons = sidebar.querySelectorAll('*');
+          plusButtons.forEach(el => {
+            const text = el.textContent.trim();
+            if (text === '+' && el.offsetWidth < 30 && el.offsetHeight < 30) {
+              buttons.push(el);
+              this.logDebug(`Bouton + trouvé dans sidebar: ${el.tagName}.${el.className}`, 'success');
+            }
+          });
+        }
+      } catch (e) {
+        // Ignorer les erreurs
+      }
+    });
+    
+    // 2. Chercher spécifiquement les éléments avec "+" comme contenu EXACT
+    document.querySelectorAll('*').forEach(el => {
+      const text = el.textContent.trim();
+      const hasOnlyPlus = text === '+' || text === '⊕' || text === '⊞';
+      const isSmall = el.offsetWidth <= 50 && el.offsetHeight <= 50;
+      const hasClickCursor = window.getComputedStyle(el).cursor === 'pointer';
+      
+      if (hasOnlyPlus && isSmall && (hasClickCursor || el.tagName === 'BUTTON')) {
+        // Vérifier que ce n'est pas dans l'éditeur de texte
+        const isInEditor = el.closest('.fr-toolbar') || 
+                          el.closest('[class*="editor"]') ||
+                          el.closest('[class*="wysiwyg"]') ||
+                          el.className.includes('fr-');
+        
+        if (!isInEditor && !buttons.includes(el)) {
+          buttons.push(el);
+          this.logDebug(`Bouton + pur trouvé: ${el.tagName}.${el.className}`, 'success');
+        }
+      }
+    });
+    
+    // 3. Chercher les éléments avec des classes de toggle spécifiques
+    const specificToggleSelectors = [
+      '[class*="collapsed"]',
+      '[aria-expanded="false"]',
+      '[class*="closed"]',
+      '[data-state="closed"]',
+      '[class*="minimize"]'
+    ];
+    
+    specificToggleSelectors.forEach(selector => {
+      try {
+        document.querySelectorAll(selector).forEach(el => {
+          // Exclure l'éditeur de texte
+          if (!el.closest('.fr-toolbar') && !el.className.includes('fr-')) {
+            if (!buttons.includes(el)) {
+              buttons.push(el);
+              this.logDebug(`Élément toggle trouvé: ${selector}`, 'info');
+            }
+          }
+        });
+      } catch (e) {
+        // Ignorer les erreurs de sélecteur
+      }
+    });
+    
+    // 4. NOUVEAU : Recherche par proximité avec les titres de sections
+    const sectionTitles = [
+      'intention de recherche',
+      'tous les termes clés', 
+      'mes prompts',
+      'entités nlp',
+      'maillage interne',
+      'cannibalisation',
+      'concurrents'
+    ];
+    
+    sectionTitles.forEach(title => {
+      const titleElements = Array.from(document.querySelectorAll('*')).filter(el => 
+        el.textContent.toLowerCase().includes(title) && 
+        el.textContent.length < 100
+      );
+      
+      titleElements.forEach(titleEl => {
+        // Chercher un bouton "+" dans les 3 parents
+        let parent = titleEl;
+        for (let i = 0; i < 3; i++) {
+          if (parent) {
+            const nearbyPlus = Array.from(parent.querySelectorAll('*')).find(el => 
+              el.textContent.trim() === '+' && 
+              el.offsetWidth < 30 && 
+              !el.closest('.fr-toolbar')
+            );
+            
+            if (nearbyPlus && !buttons.includes(nearbyPlus)) {
+              buttons.push(nearbyPlus);
+              this.logDebug(`Bouton + trouvé près de "${title}": ${nearbyPlus.tagName}`, 'success');
+            }
+            parent = parent.parentElement;
+          }
+        }
+      });
+    });
+    
+    this.logDebug(`Total boutons d'expansion trouvés: ${buttons.length}`, 'warning');
+    return buttons;
+  }
+
+  // AMÉLIORÉ : Test spécifique du bouton NLP avec gestion des 3 états
+  async testNLPButton() {
+    this.logDebug('=== TEST BOUTON NLP AMÉLIORÉ ===', 'warning');
+    this.clearInspectorResults();
+    
+    // 1. Chercher d'abord le contenu NLP existant
+    const nlpContainer = this.findNLPContainer();
+    
+    if (nlpContainer) {
+      const currentContent = nlpContainer.textContent.trim();
+      
+      // Vérifier si les entités sont déjà générées (état 3)
+      if (this.isNLPAlreadyGenerated(currentContent)) {
+        this.updateInspectorResults('✅ Entités NLP déjà générées !');
+        this.updateInspectorResults(`Contenu: ${currentContent.substring(0, 100)}...`);
+        return true;
+      }
+      
+      // Vérifier si en cours de génération (état 2)
+      if (this.isNLPGenerating(currentContent)) {
+        this.updateInspectorResults('⏳ Génération déjà en cours...');
+        return await this.waitForNLPCompletion(nlpContainer);
+      }
+      
+      // État 1 : Bouton pas encore cliqué
+      this.updateInspectorResults('🎯 Bouton NLP à cliquer');
+    }
+    
+    // 2. Chercher le bouton NLP
+    const nlpButton = this.findNLPButton();
+    
+    if (!nlpButton) {
+      this.updateInspectorResults('❌ Bouton NLP non trouvé');
+      return false;
+    }
+    
+    // 3. Cliquer et surveiller
+    return await this.clickAndWaitNLP(nlpButton, nlpContainer);
+  }
+
+  // Trouver le conteneur des entités NLP
+  findNLPContainer() {
+    const selectors = [
+      '#load_entities',
+      '#entities_btn', 
+      '[id*="entities"]',
+      '[class*="entities"]'
+    ];
+    
+    for (const selector of selectors) {
+      const element = document.querySelector(selector);
+      if (element) {
+        this.updateInspectorResults(`Container NLP trouvé: ${selector}`);
+        return element;
+      }
+    }
+    
+    return null;
+  }
+
+  // Vérifier si les entités sont déjà générées
+  isNLPAlreadyGenerated(content) {
+    const indicators = [
+      'entreprises', 'ensemble', 'coûts', 'normes', // Mots-clés typiques
+      'infogérance', 'accroissement', 'utilisateurs',
+      'Les entités NLP sont extraites', // Text explicatif
+    ];
+    
+    return indicators.some(indicator => content.toLowerCase().includes(indicator)) &&
+           content.length > 200 && // Contenu substantiel
+           !content.includes('Analyse de la SERP lancée') &&
+           !content.includes('Obtenir les entités');
+  }
+
+  // Vérifier si la génération est en cours
+  isNLPGenerating(content) {
+    return content.includes('Analyse de la SERP lancée') || 
+           content.includes('Résultats dans') ||
+           content.includes('minutes');
+  }
+
+  // Trouver le bouton NLP
+  findNLPButton() {
+    // 1. Chercher par texte spécifique
+    const buttons = Array.from(document.querySelectorAll('button, [role="button"], .commande')).filter(btn => {
+      const text = btn.textContent.toLowerCase();
+      return text.includes('obtenir les entités') && text.includes('nlp');
+    });
+    
+    if (buttons.length > 0) {
+      this.updateInspectorResults(`Bouton trouvé par texte: "${buttons[0].textContent.trim()}"`);
+      return buttons[0];
+    }
+    
+    // 2. Chercher par ID ou span spécifique
+    const spanButton = document.querySelector('#toggleButton, [id*="toggle"]');
+    if (spanButton && spanButton.textContent.includes('entités')) {
+      this.updateInspectorResults(`Bouton trouvé par ID: ${spanButton.id}`);
+      return spanButton;
+    }
+    
+    // 3. Chercher dans le container NLP
+    const nlpContainer = this.findNLPContainer();
+    if (nlpContainer) {
+      const innerButtons = nlpContainer.querySelectorAll('button, span[class*="commande"], [onclick]');
+      for (const btn of innerButtons) {
+        if (btn.textContent.toLowerCase().includes('obtenir')) {
+          this.updateInspectorResults(`Bouton trouvé dans container: "${btn.textContent.trim()}"`);
+          return btn;
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  // Cliquer et attendre la génération NLP
+  async clickAndWaitNLP(button, container) {
+    this.updateInspectorResults(`🎯 Clic sur: "${button.textContent.trim()}"`);
+    
+    // Surligner le bouton
+    button.style.border = '3px solid red';
+    button.style.boxShadow = '0 0 15px red';
+    
+    // Enregistrer l'état avant clic
+    const beforeContent = container ? container.textContent : '';
+    
+    // Cliquer
+    try {
+      button.click();
+      this.updateInspectorResults('✅ Bouton cliqué');
+    } catch (error) {
+      this.updateInspectorResults(`❌ Erreur clic: ${error.message}`);
+      return false;
+    }
+    
+    // Attendre le changement d'état (passage à l'état 2)
+    await this.wait(1000);
+    
+    // Vérifier si on est passé en mode "génération"
+    const updatedContainer = this.findNLPContainer();
+    if (updatedContainer) {
+      const newContent = updatedContainer.textContent;
+      
+      if (this.isNLPGenerating(newContent)) {
+        this.updateInspectorResults('⏳ Génération lancée !');
+        button.style.border = '3px solid orange';
+        
+        // Attendre la completion
+        return await this.waitForNLPCompletion(updatedContainer);
+      }
+    }
+    
+    this.updateInspectorResults('⚠️ Pas de changement détecté après clic');
+    return false;
+  }
+
+  // Attendre que la génération NLP soit terminée
+  async waitForNLPCompletion(container) {
+    this.updateInspectorResults('⏳ Attente completion NLP...');
+    
+    let attempts = 0;
+    const maxAttempts = 180; // 3 minutes max
+    
+    const checkInterval = setInterval(() => {
+      attempts++;
+      const currentContent = container.textContent;
+      
+      // Vérifier si terminé (état 3)
+      if (this.isNLPAlreadyGenerated(currentContent)) {
+        this.updateInspectorResults(`✅ NLP générées après ${attempts} secondes !`);
+        this.updateInspectorResults(`Entités trouvées: ${this.countNLPEntities(currentContent)}`);
+        clearInterval(checkInterval);
+        
+        // Surligner en vert
+        const button = this.findNLPButton();
+        if (button) {
+          button.style.border = '3px solid green';
+          button.style.boxShadow = '0 0 15px green';
+        }
+        
+        return true;
+      }
+      
+      // Afficher le progrès
+      if (attempts % 10 === 0) {
+        this.updateInspectorResults(`⏳ ${attempts}s écoulées...`);
+      }
+      
+      // Timeout
+      if (attempts >= maxAttempts) {
+        this.updateInspectorResults('⚠️ Timeout - Génération trop longue');
+        clearInterval(checkInterval);
+        return false;
+      }
+    }, 1000);
+    
+    return new Promise((resolve) => {
+      const originalSetInterval = setInterval;
+      // Cette promesse sera résolue par le clearInterval ci-dessus
+    });
+  }
+
+  // Compter le nombre d'entités NLP trouvées
+  countNLPEntities(content) {
+    // Compter les mots séparés par des espaces (approximation)
+    const words = content.split(/\s+/).filter(word => 
+      word.length > 3 && 
+      !word.includes('NLP') && 
+      !word.includes('entités')
+    );
+    return Math.min(words.length, 50); // Max 50 pour ne pas compter le texte explicatif
+  }
+
+  // Surligner les sections importantes
+  highlightImportantSections() {
+    this.logDebug('=== SURLIGNAGE SECTIONS IMPORTANTES ===', 'warning');
+    this.clearInspectorResults();
+    
+    const importantSections = [
+      'intention de recherche',
+      'tous les termes clés',
+      'mes prompts',
+      'entités nlp',
+      'groupes de mots'
+    ];
+    
+    const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'];
+    
+    importantSections.forEach((section, index) => {
+      const elements = Array.from(document.querySelectorAll('*')).filter(el => {
+        const text = el.textContent.toLowerCase();
+        return text.includes(section) && text.length < 100;
+      });
+      
+      if (elements.length > 0) {
+        const color = colors[index % colors.length];
+        elements[0].style.border = `3px solid ${color}`;
+        elements[0].style.boxShadow = `0 0 15px ${color}`;
+        
+        this.updateInspectorResults(`${section}: trouvé (${elements[0].tagName})`);
+      } else {
+        this.updateInspectorResults(`${section}: NON TROUVÉ`);
       }
     });
   }
 
-  // NOUVEAU : Mettre à jour les résultats de l'inspecteur
+  // Utilitaires
+  clearInspectorResults() {
+    const results = document.getElementById('inspector-results');
+    if (results) {
+      results.innerHTML = '';
+    }
+  }
+
   updateInspectorResults(message) {
     const results = document.getElementById('inspector-results');
     if (results) {
@@ -304,23 +785,15 @@ class SEODataExtractor {
   }
 
   addCopyButton() {
-    // Vérifier si le bouton existe déjà
     const existing = document.getElementById('seo-copy-button');
     if (existing) {
-      this.logDebug('Bouton existant supprimé');
       existing.remove();
     }
 
-    // Créer le bouton flottant
     const button = document.createElement('div');
     button.id = 'seo-copy-button';
-    button.innerHTML = `
-      <div class="seo-copy-btn">
-        📋 Klipboard DEBUG
-      </div>
-    `;
+    button.innerHTML = `<div class="seo-copy-btn">📋 Klipboard AUTO</div>`;
     
-    // Ajouter des styles inline pour être sûr que ça marche
     button.style.cssText = `
       position: fixed;
       top: 20px;
@@ -348,376 +821,70 @@ class SEODataExtractor {
       button.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
     });
 
-    document.body.appendChild(button);
-    this.logDebug('Bouton créé et ajouté au DOM', 'success');
-
     button.addEventListener('click', (e) => {
-      this.logDebug('CLIC DÉTECTÉ SUR BOUTON FLOTTANT !', 'success');
       e.preventDefault();
       e.stopPropagation();
-      this.extractAllData();
+      this.fullAutoExtraction();
     });
 
-    // Test de visibilité du bouton
-    setTimeout(() => {
-      const testButton = document.getElementById('seo-copy-button');
-      if (testButton) {
-        this.logDebug('Bouton trouvé dans le DOM', 'success');
-      } else {
-        this.logDebug('Bouton non trouvé dans le DOM', 'error');
-      }
-    }, 1000);
+    document.body.appendChild(button);
+    this.logDebug('Bouton principal créé', 'success');
   }
 
-  setupListeners() {
-    // Écouter les changements pour détecter l'apparition des entités NLP
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'childList') {
-          // Détecter si les entités NLP sont apparues
-          const nlpEntities = document.querySelector('[id*="entites"]');
-          if (nlpEntities && !nlpEntities.dataset.processed) {
-            nlpEntities.dataset.processed = 'true';
-            this.logDebug('Entités NLP détectées par observer', 'success');
-          }
-        }
-      });
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
-  }
-
-  async extractAllData() {
-    this.logDebug('=== DÉBUT EXTRACTION COMPLÈTE ===', 'success');
-    this.collectedData = [];
+  // NOUVEAU : Extraction automatique complète avec expansion ciblée
+  async fullAutoExtraction() {
+    this.logDebug('=== EXTRACTION AUTOMATIQUE COMPLÈTE ===', 'success');
+    this.showNotification('Début extraction automatique...', 'warning');
     
     try {
-      this.showNotification('Extraction en cours...', 'warning');
+      // 1. Scanner et déplier les sections ThotSEO spécifiquement
+      await this.targetedThotSEOExpansion();
+      await this.wait(2000);
       
-      // 1. Déplier les sections nécessaires
-      this.logDebug('--- PHASE 1: DÉPLIAGE DES SECTIONS ---', 'warning');
-      await this.expandSections();
+      // 2. Gérer les entités NLP
+      await this.testNLPButton();
+      await this.wait(3000);
       
-      // 2. Attendre et cliquer sur "obtenir les entités NLP"
-      this.logDebug('--- PHASE 2: GESTION NLP ---', 'warning');
-      await this.clickNLPButton();
+      // 3. Extraire toutes les données
+      await this.extractAllData();
       
-      // 3. Extraire toutes les données dans l'ordre
-      this.logDebug('--- PHASE 3: EXTRACTION DONNÉES ---', 'warning');
-      await this.extractIntentionRecherche();
-      await this.extractMotsCles();
-      await this.extractEntitesNLP();
-      await this.extractGroupesMotsGras();
-      await this.extractPrompts();
+      this.showNotification('Extraction terminée avec succès !', 'success');
       
-      this.logDebug(`Données collectées: ${this.collectedData.length} sections`, 'success');
-      
-      // 4. Copier vers le presse-papier
-      await this.copyToClipboard();
-      
-      this.showNotification('Données copiées avec succès !');
-      this.logDebug('=== EXTRACTION TERMINÉE AVEC SUCCÈS ===', 'success');
     } catch (error) {
-      this.logDebug(`ERREUR lors de l'extraction: ${error.message}`, 'error');
-      this.showNotification('Erreur lors de l\'extraction des données', 'error');
+      this.logDebug(`Erreur extraction auto: ${error.message}`, 'error');
+      this.showNotification('Erreur lors de l\'extraction automatique', 'error');
     }
   }
 
-  async expandSections() {
-    this.logDebug('INSPECTION des sections à déplier...', 'info');
+  // Extraction complète des données (version simplifiée)
+  async extractAllData() {
+    this.logDebug('=== EXTRACTION DES DONNÉES ===', 'warning');
+    this.collectedData = [];
     
-    const allElements = document.querySelectorAll('*');
-    const sectionsFound = [];
+    // Extraire chaque section
+    this.extractVisibleSection('intention de recherche', 'Intention de recherche');
+    this.extractVisibleSection('obligatoires', 'Mots-clés obligatoires');
+    this.extractVisibleSection('complémentaires', 'Mots-clés complémentaires');
+    this.extractVisibleSection('entités', 'Entités NLP');
+    this.extractVisibleSection('prompts', 'Mes prompts');
+    this.extractVisibleSection('groupes', 'Groupes de mots');
     
-    for (const element of allElements) {
-      const text = element.textContent.toLowerCase();
-      if (text.includes('intention de recherche') || 
-          text.includes('mes prompts') || 
-          text.includes('tous les termes') ||
-          text.includes('entités nlp')) {
-        sectionsFound.push({
-          text: element.textContent.trim().substring(0, 50),
-          element: element,
-          tag: element.tagName,
-          classes: element.className,
-          id: element.id
-        });
-      }
-    }
-    
-    this.logDebug(`Sections trouvées: ${sectionsFound.length}`, 'info');
-    
-    const expandButtons = Array.from(document.querySelectorAll('button, div, span')).filter(el => {
-      const text = el.textContent.trim();
-      return text === '+' || 
-             text === '▶' || 
-             text === '▷' || 
-             text === '►' || 
-             text.includes('expand') ||
-             text.includes('show') ||
-             el.className.includes('expand') ||
-             el.className.includes('toggle') ||
-             el.className.includes('collapse');
-    });
-    
-    this.logDebug(`${expandButtons.length} boutons d'expansion trouvés`, 'info');
-    
-    const beforeCount = document.querySelectorAll('*:not([style*="display: none"])').length;
-    this.logDebug(`Éléments visibles AVANT dépliage: ${beforeCount}`, 'info');
-    
-    for (let i = 0; i < expandButtons.length; i++) {
-      const btn = expandButtons[i];
-      this.logDebug(`Clic sur bouton ${i + 1}: "${btn.textContent.trim()}"`, 'warning');
-      try {
-        btn.click();
-        await this.wait(300);
-      } catch (e) {
-        this.logDebug(`Erreur clic bouton ${i + 1}: ${e.message}`, 'error');
-      }
-    }
-    
-    await this.wait(2000);
-    
-    const afterCount = document.querySelectorAll('*:not([style*="display: none"])').length;
-    const diff = afterCount - beforeCount;
-    this.logDebug(`Éléments visibles APRÈS dépliage: ${afterCount} (+${diff})`, diff > 0 ? 'success' : 'warning');
+    // Copier vers le presse-papier
+    await this.copyToClipboard();
   }
 
-  async clickNLPButton() {
-    this.logDebug('Recherche bouton NLP...', 'info');
-    
-    const existingNLP = document.querySelector('#entities_btn, [id*="entities"], [class*="entities"]');
-    if (existingNLP) {
-      const content = existingNLP.textContent.trim();
-      this.logDebug(`NLP div déjà présent: ${content.length} caractères`, 'info');
-      
-      if (content.length > 100 && 
-          !content.includes('Obtenir les entités') && 
-          !content.includes('Analyse de la SERP lancée')) {
-        this.logDebug('Résultats NLP déjà présents !', 'success');
-        return;
-      }
-    }
-    
-    let nlpButton = Array.from(document.querySelectorAll('button')).find(btn => 
-      btn.textContent.toLowerCase().includes('entités') || 
-      btn.textContent.toLowerCase().includes('nlp') ||
-      btn.textContent.toLowerCase().includes('google') ||
-      btn.textContent.toLowerCase().includes('obtenir')
+  extractVisibleSection(keyword, title) {
+    const elements = Array.from(document.querySelectorAll('*')).filter(el => 
+      el.textContent.toLowerCase().includes(keyword) && 
+      el.offsetParent !== null &&
+      el.textContent.length > 20
     );
     
-    if (nlpButton) {
-      this.logDebug(`Bouton NLP trouvé: "${nlpButton.textContent}"`, 'success');
-      nlpButton.click();
-      this.logDebug('Bouton NLP cliqué - attente transformation...', 'warning');
-      
-      await this.wait(2000);
-      await this.waitForNLPEntities();
-    } else {
-      this.logDebug('Bouton NLP non trouvé', 'error');
+    if (elements.length > 0) {
+      const content = this.cleanText(elements[0].textContent);
+      this.collectedData.push(`${title}:\n${content}\n`);
+      this.logDebug(`${title} extrait`, 'success');
     }
-  }
-
-  async waitForNLPEntities() {
-    this.logDebug('Attente des entités NLP...', 'warning');
-    let attempts = 0;
-    const maxAttempts = 15;
-    
-    while (attempts < maxAttempts) {
-      const entitiesDiv = document.querySelector('#entities_btn, [id*="entities"], [class*="entities_btn"]');
-      
-      if (entitiesDiv) {
-        const content = entitiesDiv.textContent.trim();
-        this.logDebug(`Tentative ${attempts + 1} - Contenu: ${content.length} caractères`, 'info');
-        
-        if (content.length > 100 && 
-            !content.includes('Analyse de la SERP lancée') && 
-            !content.includes('Résultats dans') &&
-            (content.includes('Google') || content.includes('entités') || content.length > 200)) {
-          this.logDebug(`Entités NLP chargées après ${attempts + 1} secondes`, 'success');
-          return;
-        }
-      }
-      
-      await this.wait(1000);
-      attempts++;
-    }
-    
-    this.logDebug('Timeout - Entités NLP non chargées', 'error');
-  }
-
-  extractIntentionRecherche() {
-    this.logDebug('Extraction intention de recherche...', 'info');
-    const intentionElement = document.querySelector('[class*="intention"], [id*="intention"]');
-    if (intentionElement) {
-      const text = this.cleanText(intentionElement.textContent);
-      this.collectedData.push(`Intention de recherche:\n${text}\n`);
-      this.logDebug('Intention extraite', 'success');
-    } else {
-      this.logDebug('Intention non trouvée', 'warning');
-    }
-  }
-
-  extractMotsCles() {
-    this.logDebug('Extraction mots-clés...', 'info');
-    
-    const obligatoires = this.extractKeywordSection('obligatoires', 'Obligatoires (par ordre de priorité)');
-    if (obligatoires) {
-      this.collectedData.push(obligatoires);
-      this.logDebug('Mots-clés obligatoires extraits', 'success');
-    }
-
-    const complementaires = this.extractKeywordSection('complémentaires', 'Complémentaires');
-    if (complementaires) {
-      this.collectedData.push(complementaires);
-      this.logDebug('Mots-clés complémentaires extraits', 'success');
-    }
-  }
-
-  extractKeywordSection(sectionType, title) {
-    this.logDebug(`Recherche section ${sectionType}...`, 'info');
-    
-    const selectors = [
-      `[class*="${sectionType}"]`,
-      `[id*="${sectionType}"]`,
-      `[data-section="${sectionType}"]`
-    ];
-
-    let section = null;
-    for (const selector of selectors) {
-      section = document.querySelector(selector);
-      if (section) break;
-    }
-
-    if (!section) {
-      const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6, .title, .heading');
-      for (const heading of headings) {
-        if (heading.textContent.toLowerCase().includes(sectionType.toLowerCase())) {
-          section = heading.closest('div, section, article') || heading.parentElement;
-          break;
-        }
-      }
-    }
-
-    if (section) {
-      this.logDebug(`Section ${sectionType} trouvée`, 'success');
-      const keywords = this.extractKeywordsWithMetrics(section);
-      if (keywords.length > 0) {
-        return `${title}\n${keywords.join(' ')}\n`;
-      }
-    } else {
-      this.logDebug(`Section ${sectionType} non trouvée`, 'warning');
-    }
-    return null;
-  }
-
-  extractKeywordsWithMetrics(section) {
-    const keywords = [];
-    
-    const keywordElements = section.querySelectorAll('[class*="keyword"], [class*="term"], .tag, .chip, .badge');
-    
-    for (const element of keywordElements) {
-      const text = element.textContent.trim();
-      if (text.match(/\w+\s+\d+\/\s*\d+-\d+/)) {
-        keywords.push(text);
-      }
-    }
-
-    if (keywords.length === 0) {
-      const fullText = section.textContent;
-      const matches = fullText.match(/\w+\s+\d+\/\s*\d+-\d+/g);
-      if (matches) {
-        keywords.push(...matches);
-      }
-    }
-
-    return keywords;
-  }
-
-  extractEntitesNLP() {
-    this.logDebug('Extraction entités NLP...', 'info');
-    
-    const entitiesDiv = document.querySelector('#entities_btn, [id*="entities"], [class*="entities_btn"]');
-    
-    if (entitiesDiv) {
-      const content = entitiesDiv.textContent.trim();
-      this.logDebug(`Div entities_btn trouvé: ${content.length} caractères`, 'info');
-      
-      let cleanContent = content;
-      cleanContent = cleanContent.replace(/Analyse de la SERP lancée.*?Résultats dans \d+ minutes\./g, '');
-      cleanContent = cleanContent.replace(/Obtenir les entités NLP \(\d+ credit\)/g, '');
-      cleanContent = this.cleanText(cleanContent);
-      
-      if (cleanContent.length > 20) {
-        this.collectedData.push(`Entités NLP Google:\n${cleanContent}\n`);
-        this.logDebug('Entités NLP extraites', 'success');
-      } else {
-        this.logDebug('Contenu entités NLP trop court', 'warning');
-      }
-    } else {
-      this.logDebug('Div entities_btn non trouvé', 'warning');
-    }
-  }
-
-  extractGroupesMotsGras() {
-    this.logDebug('Extraction groupes mots gras...', 'info');
-    const grasSection = document.querySelector('[class*="gras"], [id*="gras"], [class*="bold"]');
-    if (grasSection) {
-      const text = this.cleanText(grasSection.textContent);
-      this.collectedData.push(`Groupes de mots à mettre en gras:\n${text}\n`);
-      this.logDebug('Groupes mots gras extraits', 'success');
-    } else {
-      this.logDebug('Groupes mots gras non trouvés', 'warning');
-    }
-  }
-
-  async extractPrompts() {
-    this.logDebug('Extraction prompts...', 'info');
-    const promptNames = [
-      'Gains d\'information',
-      'Création d\'un plan MECE',
-      'Idées de listes et tableaux',
-      'Densification mots-clés',
-      'Guide pour la rédaction de contenu'
-    ];
-
-    for (const promptName of promptNames) {
-      this.logDebug(`Recherche prompt "${promptName}"...`, 'info');
-      const promptData = await this.extractSinglePrompt(promptName);
-      if (promptData) {
-        this.collectedData.push(`${promptName}:\n${promptData}\n`);
-        this.logDebug(`Prompt "${promptName}" extrait`, 'success');
-      } else {
-        this.logDebug(`Prompt "${promptName}" non trouvé`, 'warning');
-      }
-    }
-  }
-
-  async extractSinglePrompt(promptName) {
-    const promptElements = document.querySelectorAll('[class*="prompt"], .prompt-item, [data-prompt]');
-    
-    for (const element of promptElements) {
-      if (element.textContent.includes(promptName)) {
-        const copyButton = element.querySelector('button[class*="copy"], [title*="copier"], [class*="copier"]');
-        if (copyButton) {
-          this.logDebug(`Bouton copier trouvé pour "${promptName}"`, 'success');
-          copyButton.click();
-          await this.wait(200);
-          
-          try {
-            const clipboardText = await navigator.clipboard.readText();
-            return clipboardText;
-          } catch (e) {
-            const textContent = element.querySelector('[class*="content"], .text, .description');
-            return textContent ? this.cleanText(textContent.textContent) : null;
-          }
-        }
-      }
-    }
-    return null;
   }
 
   cleanText(text) {
@@ -726,13 +893,13 @@ class SEODataExtractor {
 
   async copyToClipboard() {
     const finalText = this.collectedData.join('\n---\n\n');
-    this.logDebug(`Texte final à copier: ${finalText.length} caractères`, 'info');
+    this.logDebug(`Copie vers presse-papier: ${finalText.length} caractères`, 'info');
     
     try {
       await navigator.clipboard.writeText(finalText);
-      this.logDebug('Copie réussie via navigator.clipboard', 'success');
+      this.logDebug('Copie réussie', 'success');
     } catch (err) {
-      this.logDebug('navigator.clipboard échoué, fallback...', 'warning');
+      this.logDebug('Fallback copie...', 'warning');
       const textArea = document.createElement('textarea');
       textArea.value = finalText;
       textArea.style.position = 'fixed';
@@ -740,21 +907,12 @@ class SEODataExtractor {
       document.body.appendChild(textArea);
       textArea.focus();
       textArea.select();
-      
-      try {
-        const successful = document.execCommand('copy');
-        this.logDebug(successful ? 'Fallback réussi' : 'Fallback échoué', successful ? 'success' : 'error');
-      } catch (err) {
-        this.logDebug('Toutes les méthodes de copie ont échoué', 'error');
-      }
-      
+      document.execCommand('copy');
       document.body.removeChild(textArea);
     }
   }
 
   showNotification(message, type = 'success') {
-    this.logDebug(`Notification: ${message}`, 'info');
-    
     const notification = document.createElement('div');
     notification.style.cssText = `
       position: fixed;
@@ -784,123 +942,34 @@ class SEODataExtractor {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  // Méthode pour extraction rapide des éléments visibles
-  async quickExtractVisible() {
-    this.logDebug('=== EXTRACTION RAPIDE ===', 'success');
-    this.collectedData = [];
-    
-    try {
-      this.showNotification('Copie rapide en cours...', 'warning');
-      
-      this.extractVisibleIntention();
-      this.extractVisibleKeywords();
-      this.extractVisibleNLP();
-      this.extractVisiblePrompts();
-      
-      await this.copyToClipboard();
-      this.showNotification('Éléments visibles copiés !');
-      this.logDebug('Extraction rapide terminée', 'success');
-    } catch (error) {
-      this.logDebug(`Erreur lors de l'extraction rapide: ${error.message}`, 'error');
-      this.showNotification('Erreur lors de l\'extraction rapide', 'error');
-      throw error;
-    }
-  }
-
-  extractVisibleIntention() {
-    const intentionTexts = ['intention de recherche', 'recherche intention', 'search intent'];
-    
-    for (const searchText of intentionTexts) {
-      const elements = document.querySelectorAll('*');
-      for (const element of elements) {
-        if (element.textContent.toLowerCase().includes(searchText) && 
-            element.offsetParent !== null) {
-          const content = this.extractSectionContent(element);
-          if (content) {
-            this.collectedData.push(`Intention de recherche:\n${content}\n`);
-            return;
+  setupListeners() {
+    // Observer les changements DOM
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+          const nlpEntities = document.querySelector('[id*="entites"]');
+          if (nlpEntities && !nlpEntities.dataset.processed) {
+            nlpEntities.dataset.processed = 'true';
+            this.logDebug('Entités NLP détectées par observer', 'success');
           }
         }
-      }
-    }
-  }
+      });
+    });
 
-  extractVisibleKeywords() {
-    const keywordSections = ['obligatoires', 'complémentaires', 'keywords'];
-    
-    for (const section of keywordSections) {
-      const elements = document.querySelectorAll('*');
-      for (const element of elements) {
-        if (element.textContent.toLowerCase().includes(section) && 
-            element.offsetParent !== null) {
-          const content = this.extractSectionContent(element);
-          if (content) {
-            this.collectedData.push(`${section}:\n${content}\n`);
-          }
-        }
-      }
-    }
-  }
-
-  extractVisibleNLP() {
-    const nlpTexts = ['entités', 'nlp', 'google'];
-    
-    for (const searchText of nlpTexts) {
-      const elements = document.querySelectorAll('*');
-      for (const element of elements) {
-        if (element.textContent.toLowerCase().includes(searchText) && 
-            element.offsetParent !== null) {
-          const content = this.extractSectionContent(element);
-          if (content) {
-            this.collectedData.push(`Entités NLP:\n${content}\n`);
-            return;
-          }
-        }
-      }
-    }
-  }
-
-  extractVisiblePrompts() {
-    const promptElements = document.querySelectorAll('[class*="prompt"], .prompt-item');
-    for (const element of promptElements) {
-      if (element.offsetParent !== null) {
-        const content = this.cleanText(element.textContent);
-        if (content.length > 20) {
-          this.collectedData.push(`Prompt:\n${content}\n`);
-        }
-      }
-    }
-  }
-
-  extractSectionContent(element) {
-    const content = this.cleanText(element.textContent);
-    return content.length > 10 ? content : null;
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
   }
 }
 
-// Test si on est sur la bonne URL
-console.log('🔧 Klipboard: URL actuelle:', window.location.href);
-console.log('🔧 Klipboard: Sur thot-seo?', window.location.href.includes('thot-seo.fr'));
-
-// Écouter les messages de la popup
+// Gestion des messages depuis l'extension
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   console.log('🔧 Klipboard: Message reçu:', request);
   
   if (request.action === 'fullExtract') {
-    console.log('🔧 Klipboard: Action extraction complète demandée');
     const extractor = new SEODataExtractor();
-    extractor.extractAllData().then(() => {
-      sendResponse({success: true});
-    }).catch(() => {
-      sendResponse({success: false});
-    });
-    return true;
-  }
-  
-  if (request.action === 'quickCopy') {
-    console.log('🔧 Klipboard: Action copie rapide demandée');
-    const extractor = new SEODataExtractor();
-    extractor.quickExtractVisible().then(() => {
+    extractor.fullAutoExtraction().then(() => {
       sendResponse({success: true});
     }).catch(() => {
       sendResponse({success: false});
@@ -911,22 +980,19 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 
 // Initialisation
 function initKlipboard() {
-  console.log('🔧 Klipboard: Début initialisation...');
+  console.log('🔧 Klipboard: Initialisation...');
   try {
-    const extractor = new SEODataExtractor();
+    new SEODataExtractor();
     console.log('🔧 Klipboard: Extracteur créé avec succès');
   } catch (error) {
-    console.error('❌ Klipboard: Erreur lors de l\'initialisation:', error);
+    console.error('❌ Klipboard: Erreur initialisation:', error);
   }
 }
 
-// Lancer l'initialisation
 if (document.readyState === 'loading') {
-  console.log('🔧 Klipboard: DOM en cours de chargement, attente...');
   document.addEventListener('DOMContentLoaded', initKlipboard);
 } else {
-  console.log('🔧 Klipboard: DOM déjà chargé, initialisation immédiate');
   initKlipboard();
 }
 
-console.log('🔧 Klipboard: Fin du script');
+console.log('🔧 Klipboard: Script terminé');

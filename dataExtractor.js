@@ -27,48 +27,224 @@ class DataExtractor {
     return this.extractedData;
   }
 
-  // Extraire l'intention de recherche
+  // Extraire l'intention de recherche - VERSION STRUCTURE EXACTE
   async extractIntentionRecherche() {
     this.main.logDebug('Extraction intention de recherche...', 'info');
     
-    const selectors = [
-      '#success_rate',
-      '[id*="intention"]',
-      '[class*="intention"]'
+    // 1. Chercher la section "Intention de recherche" avec sa vraie structure
+    const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6, div, span');
+    for (const heading of headings) {
+      const headingText = heading.textContent.toLowerCase().trim();
+      if (headingText === 'intention de recherche') {
+        this.main.logDebug(`Section Intention de recherche trouvée: "${heading.textContent}"`, 'info');
+        
+        // Chercher le container suivant avec les questions et mots-clés
+        let container = heading.nextElementSibling;
+        let attempts = 0;
+        
+        while (container && attempts < 5) {
+          if (container.offsetParent !== null) {
+            const content = this.extractIntentionStructure(container);
+            if (content) {
+              this.extractedData.set('intention_recherche', content);
+              this.main.logDebug('Intention de recherche extraite par structure', 'success');
+              return;
+            }
+          }
+          container = container.nextElementSibling;
+          attempts++;
+        }
+        
+        // Si pas trouvé dans les éléments suivants, chercher dans le parent
+        const parentContainer = heading.parentElement;
+        if (parentContainer) {
+          const content = this.extractIntentionStructure(parentContainer);
+          if (content) {
+            this.extractedData.set('intention_recherche', content);
+            this.main.logDebug('Intention de recherche extraite par parent', 'success');
+            return;
+          }
+        }
+      }
+    }
+    
+    // 2. Fallback: chercher par structure de questions
+    const questionElements = Array.from(document.querySelectorAll('*')).filter(el => {
+      const text = el.textContent.toLowerCase();
+      return (text.includes('qu\'est-ce qui') || 
+              text.includes('comment ') ||
+              text.includes('pourquoi ') ||
+              text.includes('quel est ') ||
+              text.includes('quelles sont ')) && 
+             el.offsetParent !== null &&
+             el.textContent.length > 20 &&
+             el.textContent.length < 200;
+    });
+    
+    if (questionElements.length > 0) {
+      // Prendre le container parent qui contient plusieurs questions
+      const containers = questionElements.map(el => el.closest('div, section')).filter(c => c);
+      for (const container of containers) {
+        const content = this.extractIntentionStructure(container);
+        if (content) {
+          this.extractedData.set('intention_recherche', content);
+          this.main.logDebug('Intention de recherche extraite par questions', 'success');
+          return;
+        }
+      }
+    }
+    
+    this.main.logDebug('Intention de recherche non trouvée', 'warning');
+  }
+
+  // Nouvelle méthode pour extraire la structure des intentions
+  extractIntentionStructure(container) {
+    const intentions = [];
+    
+    // Chercher les questions et leurs mots-clés associés
+    const textContent = container.textContent;
+    
+    // Vérifier qu'on a bien des questions (pattern de questions)
+    const questionPatterns = [
+      /qu'est-ce qui[^?]*\?/gi,
+      /comment [^?]*\?/gi, 
+      /pourquoi [^?]*\?/gi,
+      /quel est [^?]*\?/gi,
+      /quelles sont [^?]*\?/gi,
+      /quelle est [^?]*\?/gi
     ];
     
-    let content = null;
-    
-    for (const selector of selectors) {
-      const element = document.querySelector(selector);
-      if (element && element.offsetParent !== null) {
-        content = this.cleanText(element.textContent);
+    let hasQuestions = false;
+    for (const pattern of questionPatterns) {
+      if (pattern.test(textContent)) {
+        hasQuestions = true;
         break;
       }
     }
     
-    // Fallback: chercher par contenu
-    if (!content) {
-      const elements = Array.from(document.querySelectorAll('*')).filter(el => {
-        const text = el.textContent.toLowerCase();
-        return text.includes('comment optimiser') && 
-               text.includes('gestion') && 
-               el.offsetParent !== null &&
-               el.textContent.length > 50 &&
-               el.textContent.length < 500;
-      });
-      
-      if (elements.length > 0) {
-        content = this.cleanText(elements[0].textContent);
+    if (!hasQuestions) {
+      return null;
+    }
+    
+    // Méthode 1: Extraire par structure HTML (h3, h4 + spans)
+    const questionHeaders = container.querySelectorAll('h3, h4, h5, div, p');
+    for (const header of questionHeaders) {
+      const questionText = header.textContent.trim();
+      if (questionText.match(/^(qu'est-ce qui|comment|pourquoi|quel est|quelles sont|quelle est)/i) && 
+          questionText.includes('?')) {
+        
+        // Chercher les mots-clés associés dans les éléments suivants
+        const keywords = this.findKeywordsAfterQuestion(header);
+        
+        if (keywords.length > 0) {
+          intentions.push({
+            question: questionText,
+            keywords: keywords
+          });
+        }
       }
     }
     
-    if (content) {
-      this.extractedData.set('intention_recherche', content);
-      this.main.logDebug('Intention de recherche extraite', 'success');
-    } else {
-      this.main.logDebug('Intention de recherche non trouvée', 'warning');
+    // Méthode 2: Si pas de structure HTML claire, parser le texte
+    if (intentions.length === 0) {
+      const lines = textContent.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+      
+      let currentQuestion = null;
+      let currentKeywords = [];
+      
+      for (const line of lines) {
+        if (line.match(/^(qu'est-ce qui|comment|pourquoi|quel est|quelles sont|quelle est)/i) && line.includes('?')) {
+          // Sauvegarder la question précédente si elle existe
+          if (currentQuestion && currentKeywords.length > 0) {
+            intentions.push({
+              question: currentQuestion,
+              keywords: currentKeywords
+            });
+          }
+          
+          // Nouvelle question
+          currentQuestion = line;
+          currentKeywords = [];
+        } else if (currentQuestion && line.length > 0 && !line.includes('Intention de recherche')) {
+          // Traiter comme des mots-clés
+          const words = line.split(/\s+/).filter(word => word.length > 2);
+          currentKeywords.push(...words);
+        }
+      }
+      
+      // Ajouter la dernière question
+      if (currentQuestion && currentKeywords.length > 0) {
+        intentions.push({
+          question: currentQuestion,
+          keywords: currentKeywords
+        });
+      }
     }
+    
+    // Formater le résultat
+    if (intentions.length > 0) {
+      let formatted = '';
+      
+      intentions.forEach(intention => {
+        formatted += `${intention.question}\n`;
+        // CORRECTION: Utiliser des retours à la ligne comme les autres colonnes !
+        formatted += `${intention.keywords.join('\n')}\n\n`;
+      });
+      
+      return formatted.trim();
+    }
+    
+    return null;
+  }
+
+  // Trouver les mots-clés après une question - VERSION STRUCTURE EXACTE
+  findKeywordsAfterQuestion(questionElement) {
+    const keywords = [];
+    
+    // Chercher dans les éléments suivants
+    let nextElement = questionElement.nextElementSibling;
+    let attempts = 0;
+    
+    while (nextElement && attempts < 5) {
+      // Si c'est une nouvelle question, arrêter
+      if (nextElement.textContent.match(/^(qu'est-ce qui|comment|pourquoi|quel est|quelles sont|quelle est)/i)) {
+        break;
+      }
+      
+      // Chercher les spans avec classe IDR_tag ou keyword (structure exacte)
+      const keywordSpans = nextElement.querySelectorAll('span.IDR_tag, span[class*="keyword"], span[class*="IDR_tag"]');
+      if (keywordSpans.length > 0) {
+        keywordSpans.forEach(span => {
+          const text = span.textContent.trim();
+          if (text.length > 1 && text.length < 30 && !text.includes('?') && !text.includes('span')) {
+            keywords.push(text);
+          }
+        });
+      } else {
+        // Si pas de spans spécifiques, chercher tous les spans
+        const spans = nextElement.querySelectorAll('span');
+        if (spans.length > 0) {
+          spans.forEach(span => {
+            const text = span.textContent.trim();
+            if (text.length > 1 && text.length < 30 && !text.includes('?')) {
+              keywords.push(text);
+            }
+          });
+        } else {
+          // Si pas de spans, traiter le texte directement (fallback)
+          const text = nextElement.textContent.trim();
+          if (text.length > 0 && !text.includes('?') && text.length < 200) {
+            const words = text.split(/\s+/).filter(word => word.length > 1 && word.length < 30);
+            keywords.push(...words);
+          }
+        }
+      }
+      
+      nextElement = nextElement.nextElementSibling;
+      attempts++;
+    }
+    
+    return keywords;
   }
 
   // Extraire les mots-clés obligatoires
@@ -109,7 +285,7 @@ class DataExtractor {
     for (const selector of selectors) {
       const element = document.querySelector(selector);
       if (element && element.offsetParent !== null) {
-        return this.cleanText(element.textContent);
+        return this.extractKeywordsFromContainer(element);
       }
     }
     
@@ -145,29 +321,49 @@ class DataExtractor {
     return null;
   }
 
-  // Extraire les mots-clés d'un container
+  // Extraire les mots-clés d'un container - VERSION STRUCTURE HTML
   extractKeywordsFromContainer(container) {
     const keywords = [];
     
-    // Chercher les éléments avec structure "mot 0/X-Y"
-    const elements = container.querySelectorAll('*');
-    for (const element of elements) {
-      const text = element.textContent.trim();
-      if (text.match(/\w+\s+\d+\/\s*\d+-\d+/)) {
-        keywords.push(text);
-      }
+    // Méthode 1: Utiliser la structure HTML exacte (spans avec classes keyword)
+    const keywordSpans = container.querySelectorAll('span.keyword, span[class*="keyword"]');
+    if (keywordSpans.length > 0) {
+      keywordSpans.forEach(span => {
+        const leftSide = span.querySelector('.keyword-left-side');
+        const rightSide = span.querySelector('.keyword-right-side');
+        
+        if (leftSide && rightSide) {
+          // Prendre left-side + " " + right-side
+          const keyword = leftSide.textContent.trim() + ' ' + rightSide.textContent.trim();
+          keywords.push(keyword);
+        } else {
+          // Fallback: prendre tout le contenu du span s'il a l'air correct
+          const text = span.textContent.trim();
+          if (text.match(/\w+.*0\/.*\d+/)) {
+            keywords.push(text);
+          }
+        }
+      });
     }
     
-    // Si pas de structure spécifique, extraire le texte brut
+    // Méthode 2: Si pas de structure keyword, essayer par regex sur le texte
     if (keywords.length === 0) {
-      const text = container.textContent;
-      const matches = text.match(/\w+\s+\d+\/\s*\d+-\d+/g);
-      if (matches) {
-        keywords.push(...matches);
+      const text = container.textContent.trim();
+      const regex = /(\w+\s+0\/\s*[\d\-]+)/g;
+      const matches = text.match(regex);
+      
+      if (matches && matches.length > 0) {
+        const cleanMatches = matches.map(match => match.trim()).filter(match => match.length > 0);
+        return cleanMatches.join('\n');
       }
     }
     
-    return keywords.length > 0 ? keywords.join('\n') : null;
+    // Formatage final : un mot-clé par ligne
+    if (keywords.length > 0) {
+      return keywords.join('\n');
+    }
+    
+    return null;
   }
 
   // Extraire les entités NLP - VERSION CORRIGÉE
@@ -419,54 +615,66 @@ class DataExtractor {
     this.main.logDebug('Groupes mots gras non trouvés', 'warning');
   }
 
-  // Extraire SEULEMENT les spans de groupes, pas tout le contenu
+  // Extraire SEULEMENT les spans de groupes, pas tout le contenu - VERSION STRUCTURE EXACTE
   extractOnlyGroupeSpans(container) {
     const groupes = [];
     
-    // Méthode 1: Chercher les spans avec classes keyword spécifiques
-    const keywordSpans = container.querySelectorAll('span[class*="keyword"], span[class*="pgram"]');
-    if (keywordSpans.length > 0) {
-      keywordSpans.forEach(span => {
+    // Méthode 1: Structure exacte des groupes de mots (spans avec classes pgram keyword)
+    const pgramSpans = container.querySelectorAll('span.pgram, span[class*="pgram"]');
+    if (pgramSpans.length > 0) {
+      pgramSpans.forEach(span => {
         const text = span.textContent.trim();
-        // Filtrer pour garder seulement les groupes de mots (pas les mots isolés)
-        if (text.length > 5 && text.includes(' ') && !text.includes('NLP') && !text.includes('entités')) {
+        // Prendre le contenu de chaque span pgram
+        if (text.length > 2 && !text.includes('NLP') && !text.includes('entités')) {
           groupes.push(text);
         }
       });
     }
     
-    // Méthode 2: Si pas de spans keyword, chercher les spans avec background-color
+    // Méthode 2: Si pas de spans pgram, chercher les spans avec ID contenant "keyword_"
+    if (groupes.length === 0) {
+      const keywordSpans = container.querySelectorAll('span[id*="keyword_"]');
+      keywordSpans.forEach(span => {
+        const text = span.textContent.trim();
+        if (text.length > 2 && !text.includes('NLP') && !text.includes('entités')) {
+          groupes.push(text);
+        }
+      });
+    }
+    
+    // Méthode 3: Chercher les spans avec classes keyword mais pas de left-side/right-side
+    if (groupes.length === 0) {
+      const keywordSpans = container.querySelectorAll('span[class*="keyword"]');
+      keywordSpans.forEach(span => {
+        // Éviter les spans qui sont des sous-éléments (left-side, right-side)
+        if (!span.classList.contains('keyword-left-side') && 
+            !span.classList.contains('keyword-right-side')) {
+          const text = span.textContent.trim();
+          if (text.length > 2 && !text.includes('NLP') && !text.includes('entités') && !text.includes('0/')) {
+            groupes.push(text);
+          }
+        }
+      });
+    }
+    
+    // Méthode 4: Fallback - spans avec background-color
     if (groupes.length === 0) {
       const coloredSpans = container.querySelectorAll('span[style*="background-color"]');
       coloredSpans.forEach(span => {
         const text = span.textContent.trim();
-        if (text.length > 5 && text.includes(' ') && !text.includes('NLP') && !text.includes('entités')) {
+        if (text.length > 2 && !text.includes('NLP') && !text.includes('entités') && !text.includes('0/')) {
           groupes.push(text);
         }
       });
     }
     
-    // Méthode 3: Si pas de spans colorés, chercher tous les spans mais filtrer strictement
-    if (groupes.length === 0) {
-      const allSpans = container.querySelectorAll('span');
-      if (allSpans.length > 0 && allSpans.length < 100) { // Pas trop de spans pour éviter la page entière
-        allSpans.forEach(span => {
-          const text = span.textContent.trim();
-          // Très strict: doit contenir des espaces (groupe de mots) et avoir une taille raisonnable
-          if (text.length > 8 && 
-              text.length < 50 && 
-              text.includes(' ') && 
-              (text.includes('de ') || text.includes('du ') || text.includes('informatique') || text.includes('gestion'))) {
-            groupes.push(text);
-          }
-        });
-      }
-    }
-    
     if (groupes.length > 0) {
-      // Enlever les doublons et formater
-      const uniqueGroupes = [...new Set(groupes)];
-      return `Groupes de mots à mettre en gras:\n\n${uniqueGroupes.join('\n')}`;
+      // Enlever les doublons et formater proprement
+      const uniqueGroupes = [...new Set(groupes)]
+        .filter(group => group.length > 2)
+        .slice(0, 30); // Limiter à 30 groupes maximum
+      
+      return uniqueGroupes.join('\n');
     }
     
     return null;
@@ -520,49 +728,156 @@ class DataExtractor {
     this.main.logDebug('Idées de sujets non trouvées', 'warning');
   }
 
-  // Assembler et copier toutes les données
+  // Assembler et copier toutes les données - FORMAT EXCEL TSV AVEC PROMPTS CORRIGÉ
   async assembleAndCopy() {
-    this.main.logDebug('Assemblage des données...', 'info');
+    this.main.logDebug('Assemblage des données pour Excel...', 'info');
     
-    const sections = [
-      { key: 'intention_recherche', title: 'INTENTION DE RECHERCHE' },
-      { key: 'mots_cles_obligatoires', title: 'MOTS-CLÉS OBLIGATOIRES' },
-      { key: 'mots_cles_complementaires', title: 'MOTS-CLÉS COMPLÉMENTAIRES' },
-      { key: 'entites_nlp', title: 'ENTITÉS NLP GOOGLE' },
-      { key: 'groupes_mots_gras', title: 'GROUPES DE MOTS À METTRE EN GRAS' },
-      { key: 'mes_prompts', title: 'MES PROMPTS' },
-      { key: 'idees_sujets', title: 'IDÉES DE SUJETS' }
+    // Ordre exact des colonnes demandées
+    const columnOrder = [
+      'intention_recherche',           // Termes pour les intention de recherche
+      'mots_cles_obligatoires',       // Termes de recherches obligatoires  
+      'mots_cles_complementaires',    // Termes de recherches complémentaires
+      'entites_nlp',                  // Entitées NLP Google
+      'groupes_mots_gras',           // Groupes de mots à mettre en gras
+      'gains_information',           // Gains d'information (prompt)
+      'plan_mece',                   // Création d'un plan MECE (prompt)  
+      'idees_listes_tableaux',       // Idées de listes et tableaux (prompt)
+      'densification_mots_cles',     // Densification mots-clés (prompt)
+      'guide_redaction'              // Guide pour la rédaction de contenu (prompt)
     ];
     
-    let finalContent = '';
-    let extractedCount = 0;
-    
-    sections.forEach(section => {
-      const content = this.extractedData.get(section.key);
-      if (content) {
-        finalContent += `${section.title}:\n`;
-        finalContent += `${content}\n\n`;
-        finalContent += '---\n\n';
-        extractedCount++;
+    // Extraire le contenu de chaque colonne (SANS les titres)
+    const columnContents = columnOrder.map(columnKey => {
+      let rawContent = '';
+      
+      // Pour les 5 premières colonnes : utiliser les données extraites
+      if (columnKey === 'intention_recherche' || 
+          columnKey === 'mots_cles_obligatoires' || 
+          columnKey === 'mots_cles_complementaires' || 
+          columnKey === 'entites_nlp' || 
+          columnKey === 'groupes_mots_gras') {
+        rawContent = this.extractedData.get(columnKey) || '';
+      } 
+      // Pour les 5 dernières colonnes : utiliser les prompts
+      else {
+        rawContent = this.getPromptForColumn(columnKey);
       }
+      
+      if (!rawContent) {
+        return ''; // Colonne vide
+      }
+      
+      // Nettoyer le contenu : enlever TOUS les titres et formatage
+      let cleanContent = rawContent;
+      
+      // Enlever les titres de sections (plus agressif)
+      cleanContent = cleanContent
+        .replace(/^[A-ZÀÂÄÉÈÊËÎÏÔÙÛÜŸÇ\s\-:]+:\s*/i, '') // Enlever "ENTITÉS NLP GOOGLE:", etc.
+        .replace(/^Entités NLP Google:\s*/i, '')
+        .replace(/^Groupes de mots à mettre en gras:\s*/i, '')
+        .replace(/^Intention de recherche:\s*/i, '') // CORRECTION: enlever ce titre aussi
+        .replace(/^Les entités NLP sont extraites.*$/m, '') // Enlever les explications
+        .replace(/^Intégrez-les en prenant.*$/m, '')
+        .trim();
+      
+      // CORRECTION: Formatage spécifique selon le type de colonne
+      if (columnKey === 'intention_recherche') {
+        // CORRECTION: Intention aussi avec retours à la ligne dans Excel !
+        cleanContent = cleanContent.replace(/\n/g, String.fromCharCode(10));
+      } 
+      else if (columnKey === 'mots_cles_obligatoires' || 
+               columnKey === 'mots_cles_complementaires' || 
+               columnKey === 'entites_nlp') {
+        // CORRECTION: Pour les listes - utiliser le caractère LF pour Excel
+        // Remplacer \n par le caractère ASCII 10 (Line Feed) pour retours à la ligne dans la cellule
+        cleanContent = cleanContent.replace(/\n/g, String.fromCharCode(10));
+      } 
+      else {
+        // Pour les textes longs (groupes de mots et prompts) : remplacer par des espaces
+        cleanContent = cleanContent.replace(/\n+/g, ' ').replace(/\s+/g, ' ');
+      }
+      
+      // Pour Excel TSV : quoter les cellules qui contiennent des retours à la ligne
+      if (cleanContent.includes(String.fromCharCode(10))) {
+        cleanContent = `"${cleanContent}"`;
+      }
+      
+      return cleanContent;
     });
     
-    if (finalContent) {
-      // Ajouter header
-      const header = `DONNÉES EXTRAITES DE THOT-SEO\n`;
-      const timestamp = `Extracté le: ${new Date().toLocaleString()}\n`;
-      const summary = `Sections extraites: ${extractedCount}/${sections.length}\n\n`;
-      const separator = '='.repeat(50) + '\n\n';
-      
-      finalContent = header + timestamp + summary + separator + finalContent;
-      
+    // Créer une ligne TSV (Tab-Separated Values)
+    const tsvLine = columnContents.join('\t');
+    
+    if (tsvLine.trim()) {
       // Copier vers le presse-papier
-      await this.copyToClipboard(finalContent);
+      await this.copyToClipboard(tsvLine);
       
-      this.main.logDebug(`${finalContent.length} caractères copiés`, 'success');
+      const filledColumns = columnContents.filter(content => content.length > 0).length;
+      this.main.logDebug(`Données Excel copiées: ${filledColumns}/10 colonnes remplies`, 'success');
+      this.main.showNotification(`📊 ${filledColumns}/10 colonnes Excel copiées !`, 'success');
     } else {
       this.main.logDebug('Aucune donnée à copier', 'warning');
+      this.main.showNotification('⚠️ Aucune donnée à copier', 'warning');
     }
+  }
+
+  // Obtenir le prompt correspondant à une colonne spécifique
+  getPromptForColumn(columnKey) {
+    if (!this.main.promptsManager) {
+      return '';
+    }
+    
+    const prompts = this.main.promptsManager.getExtractedPrompts();
+    if (prompts.length === 0) {
+      return '';
+    }
+    
+    // Mapping des colonnes vers les noms de prompts ThotSEO
+    const promptMappings = {
+      'gains_information': ['gains', 'information', 'gain d\'information'],
+      'plan_mece': ['mece', 'plan mece', 'plan', 'structure'],
+      'idees_listes_tableaux': ['listes', 'tableaux', 'idées', 'liste', 'tableau'],
+      'densification_mots_cles': ['densification', 'mots-clés', 'densité', 'mot-clé'],
+      'guide_redaction': ['guide', 'rédaction', 'guide rédaction', 'contenu', 'redaction']
+    };
+    
+    const keywords = promptMappings[columnKey] || [];
+    
+    // Chercher le prompt qui correspond le mieux
+    for (const [promptName, promptContent] of prompts) {
+      const lowerName = promptName.toLowerCase();
+      
+      // Vérifier si le nom du prompt contient un des mots-clés
+      for (const keyword of keywords) {
+        if (lowerName.includes(keyword.toLowerCase())) {
+          this.main.logDebug(`Prompt trouvé pour ${columnKey}: "${promptName}"`, 'success');
+          return promptContent;
+        }
+      }
+    }
+    
+    // Si pas de correspondance exacte, essayer par ordre d'apparition
+    const promptIndex = this.getPromptIndexForColumn(columnKey);
+    if (promptIndex < prompts.length) {
+      const [promptName, promptContent] = prompts[promptIndex];
+      this.main.logDebug(`Prompt assigné par index pour ${columnKey}: "${promptName}"`, 'info');
+      return promptContent;
+    }
+    
+    return '';
+  }
+
+  // Obtenir l'index du prompt par ordre d'apparition
+  getPromptIndexForColumn(columnKey) {
+    const columnToIndex = {
+      'gains_information': 0,
+      'plan_mece': 1,
+      'idees_listes_tableaux': 2,
+      'densification_mots_cles': 3,
+      'guide_redaction': 4
+    };
+    
+    return columnToIndex[columnKey] || 0;
   }
 
   // Copier vers le presse-papier

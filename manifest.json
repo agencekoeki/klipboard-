@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Klipboard",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Extension Koeki pour copier automatiquement les données SEO de thot-seo.fr",
   "permissions": [
     "activeTab",
@@ -10,7 +10,13 @@
   "content_scripts": [
     {
       "matches": ["*://thot-seo.fr/*"],
-      "js": ["content.js"],
+      "js": [
+        "sectionExpander.js",
+        "nlpManager.js", 
+        "promptsManager.js",
+        "dataExtractor.js",
+        "content.js"
+      ],
       "css": ["styles.css"]
     }
   ]

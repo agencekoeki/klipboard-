@@ -1,0 +1,150 @@
+/* Styles pour l'extension Klipboard by Koeki */
+
+#seo-copy-button {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.seo-copy-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 25px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  font-weight: 600;
+  font-size: 14px;
+  border: none;
+  outline: none;
+}
+
+.seo-copy-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+.seo-copy-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Notifications */
+.seo-notification {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  z-index: 10001;
+  padding: 15px 25px;
+  border-radius: 8px;
+  color: white;
+  font-weight: 500;
+  font-size: 14px;
+  max-width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideIn 0.3s ease-out;
+}
+
+.seo-notification.success {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+}
+
+.seo-notification.error {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+}
+
+.seo-notification.warning {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Indicateur de chargement */
+.seo-loading {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10002;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 20px 30px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.seo-loading::after {
+  content: '';
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-left: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Surbrillance temporaire des éléments extraits */
+.seo-highlighted {
+  background-color: rgba(255, 235, 59, 0.3) !important;
+  transition: background-color 0.3s ease;
+  border: 2px solid #FFC107 !important;
+  border-radius: 4px;
+}
+
+/* Styles pour le popup de l'extension */
+.seo-popup {
+  width: 300px;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.seo-popup h2 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.seo-popup button {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 10px;
+  transition: all 0.3s ease;
+}
+
+.seo-popup button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.seo-popup .status {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  margin-top: 10px;
+}

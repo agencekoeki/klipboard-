@@ -170,82 +170,306 @@ class DataExtractor {
     return keywords.length > 0 ? keywords.join('\n') : null;
   }
 
-  // Extraire les entités NLP
+  // Extraire les entités NLP - VERSION CORRIGÉE
   async extractEntitesNLP() {
     this.main.logDebug('Extraction entités NLP...', 'info');
     
+    // 1. Essayer d'abord avec le NLPManager
     if (this.main.nlpManager) {
       const content = this.main.nlpManager.extractNLPContent();
       if (content) {
-        this.extractedData.set('entites_nlp', content);
-        this.main.logDebug('Entités NLP extraites', 'success');
+        // Extraire les entités spécifiques du contenu
+        const entities = this.parseNLPEntitiesFromText(content);
+        if (entities.length > 0) {
+          const formattedContent = this.formatNLPEntities(entities);
+          this.extractedData.set('entites_nlp', formattedContent);
+          this.main.logDebug(`Entités NLP extraites via NLPManager: ${entities.length} entités`, 'success');
+          return;
+        }
+      }
+    }
+    
+    // 2. Extraction directe avec les sélecteurs exacts des captures
+    const nlpSelectors = [
+      '#liste_entites_nommes',  // Sélecteur exact de l'image 2
+      '#load_entities',
+      '[id*="entities"]',
+      '[id*="entites"]'
+    ];
+    
+    for (const selector of nlpSelectors) {
+      const container = document.querySelector(selector);
+      if (container && container.offsetParent !== null) {
+        // Vérifier si le container contient des entités NLP
+        const nlpEntities = this.extractNLPFromContainer(container);
+        if (nlpEntities && nlpEntities.length > 0) {
+          const formattedContent = this.formatNLPEntities(nlpEntities);
+          this.extractedData.set('entites_nlp', formattedContent);
+          this.main.logDebug(`Entités NLP extraites par sélecteur ${selector}: ${nlpEntities.length} entités`, 'success');
+          return;
+        }
+      }
+    }
+    
+    // 3. Fallback : chercher par classe spécifique des entités
+    const entitiesElements = document.querySelectorAll('.entites_nommees, [class*="entites_nommees"]');
+    if (entitiesElements.length > 0) {
+      const entities = Array.from(entitiesElements)
+        .map(el => el.textContent.trim())
+        .filter(text => text.length > 0 && text.length < 50); // Filtrer les entités valides
+      
+      if (entities.length > 0) {
+        const formattedContent = this.formatNLPEntities(entities);
+        this.extractedData.set('entites_nlp', formattedContent);
+        this.main.logDebug(`Entités NLP extraites par classe: ${entities.length} entités`, 'success');
         return;
       }
     }
     
-    // Fallback: extraction directe
-    const selectors = [
-      '#load_entities',
-      '#liste_entites_nommes',
-      '[id*="entities"]'
-    ];
-    
-    for (const selector of selectors) {
-      const element = document.querySelector(selector);
-      if (element && element.offsetParent !== null) {
-        const content = this.cleanText(element.textContent);
-        if (content.length > 100) {
-          this.extractedData.set('entites_nlp', content);
-          this.main.logDebug('Entités NLP extraites (fallback)', 'success');
-          return;
-        }
+    // 4. Dernière tentative : chercher des spans avec IDs contenant "-nlp"
+    const nlpSpans = document.querySelectorAll('span[id*="-nlp"]');
+    if (nlpSpans.length > 0) {
+      const entities = Array.from(nlpSpans)
+        .map(span => {
+          // Extraire le mot de l'ID (ex: "parc-nlp" -> "parc")
+          const id = span.id;
+          return id.replace('-nlp', '');
+        })
+        .filter(word => word.length > 0);
+      
+      if (entities.length > 0) {
+        const formattedContent = this.formatNLPEntities(entities);
+        this.extractedData.set('entites_nlp', formattedContent);
+        this.main.logDebug(`Entités NLP extraites par spans ID: ${entities.length} entités`, 'success');
+        return;
       }
     }
     
     this.main.logDebug('Entités NLP non trouvées', 'warning');
   }
 
+  // Nouvelle méthode pour extraire les entités d'un container - APPROCHE STRUCTURE
+  extractNLPFromContainer(container) {
+    const entities = [];
+    
+    // Méthode 1: Chercher les spans avec classe entites_nommees (structure exacte ThotSEO)
+    const entitySpans = container.querySelectorAll('.entites_nommees, [class*="entites_nommees"]');
+    if (entitySpans.length > 0) {
+      entitySpans.forEach(span => {
+        const text = span.textContent.trim();
+        if (text.length > 0 && text.length < 50 && /^[a-zA-ZÀ-ÿ\-']+$/.test(text)) {
+          entities.push(text);
+        }
+      });
+      return entities;
+    }
+    
+    // Méthode 2: Chercher les spans avec ID contenant "-nlp" (structure ThotSEO)
+    const nlpSpans = container.querySelectorAll('span[id*="-nlp"]');
+    if (nlpSpans.length > 0) {
+      nlpSpans.forEach(span => {
+        const id = span.id;
+        const word = id.replace('-nlp', '');
+        if (word.length > 0 && /^[a-zA-ZÀ-ÿ\-']+$/.test(word)) {
+          entities.push(word);
+        }
+      });
+      return entities;
+    }
+    
+    // Méthode 3: Chercher tous les spans dans le container (fallback)
+    const allSpans = container.querySelectorAll('span');
+    if (allSpans.length > 5) { // Si beaucoup de spans, probablement des entités
+      allSpans.forEach(span => {
+        const text = span.textContent.trim();
+        // Vérifier que c'est un mot simple (entité potentielle)
+        if (text.length > 2 && 
+            text.length < 25 && 
+            /^[a-zA-ZÀ-ÿ\-']+$/.test(text) &&
+            !text.toLowerCase().includes('nlp') &&
+            !text.toLowerCase().includes('entités')) {
+          entities.push(text);
+        }
+      });
+      return entities;
+    }
+    
+    return [];
+  }
+
+  // Parser les entités NLP à partir d'un texte - APPROCHE CORRIGÉE
+  parseNLPEntitiesFromText(text) {
+    // Ne pas chercher des mots spécifiques, mais extraire TOUTES les entités présentes
+    // dans la structure HTML des entités NLP
+    
+    // Nettoyer le texte et séparer les mots
+    const cleanText = text.replace(/\s+/g, ' ').trim();
+    
+    // Si le texte contient des indicateurs qu'il s'agit bien d'entités NLP
+    if (cleanText.toLowerCase().includes('entités nlp') || 
+        cleanText.toLowerCase().includes('api de traitement du langage')) {
+      
+      // Extraire tous les mots significatifs (pas les phrases explicatives)
+      const words = cleanText.split(/\s+/)
+        .filter(word => 
+          word.length > 2 &&                    // Au moins 3 caractères
+          word.length < 25 &&                   // Pas trop long
+          /^[a-zA-ZÀ-ÿ\-']+$/.test(word) &&    // Seulement lettres, traits d'union, apostrophes
+          !word.toLowerCase().includes('nlp') &&
+          !word.toLowerCase().includes('entités') &&
+          !word.toLowerCase().includes('extraites') &&
+          !word.toLowerCase().includes('google') &&
+          !word.toLowerCase().includes('serp') &&
+          !word.toLowerCase().includes('api') &&
+          !word.toLowerCase().includes('traitement') &&
+          !word.toLowerCase().includes('langage') &&
+          !word.toLowerCase().includes('intégrez') &&
+          !word.toLowerCase().includes('considération') &&
+          !word.toLowerCase().includes('casse')
+        );
+      
+      // Enlever les doublons et retourner
+      return [...new Set(words.map(word => word.toLowerCase()))];
+    }
+    
+    return [];
+  }
+
+  // Formater les entités NLP pour l'export
+  formatNLPEntities(entities) {
+    if (!entities || entities.length === 0) {
+      return '';
+    }
+    
+    let formatted = 'Entités NLP Google:\n\n';
+    
+    entities.forEach((entity, index) => {
+      formatted += `${entity}\n`;
+    });
+    
+    formatted += `\nLes entités NLP sont extraites du top 5 de la SERP via l'API de traitement du langage de Google.\n`;
+    formatted += `Intégrez-les en prenant en considération la casse.`;
+    
+    return formatted;
+  }
+
   // Extraire les groupes de mots à mettre en gras
   async extractGroupesMotsGras() {
     this.main.logDebug('Extraction groupes mots gras...', 'info');
     
-    const selectors = [
+    // 1. Chercher par ID spécifique visible dans le DOM (image 2)
+    const specificSelectors = [
+      '#pgrams_liste',  // ID visible dans votre capture
       '#groupe_liste',
-      '[id*="gras"]',
-      '[class*="gras"]',
+      '[id*="pgrams"]',
       '[id*="groupe"]'
     ];
     
-    let content = null;
-    
-    for (const selector of selectors) {
+    for (const selector of specificSelectors) {
       const element = document.querySelector(selector);
       if (element && element.offsetParent !== null) {
-        content = this.cleanText(element.textContent);
-        break;
+        const content = this.extractOnlyGroupeSpans(element);
+        if (content) {
+          this.extractedData.set('groupes_mots_gras', content);
+          this.main.logDebug(`Groupes mots gras extraits par ${selector}`, 'success');
+          return;
+        }
       }
     }
     
-    // Fallback: chercher par titre "Groupes de mots"
-    if (!content) {
-      const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
-      for (const heading of headings) {
-        if (heading.textContent.toLowerCase().includes('groupes de mots')) {
-          const nextElement = heading.nextElementSibling;
-          if (nextElement) {
-            content = this.cleanText(nextElement.textContent);
-            break;
+    // 2. Chercher par titre et cibler SEULEMENT la section suivante
+    const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6, div');
+    for (const heading of headings) {
+      const headingText = heading.textContent.toLowerCase().trim();
+      if (headingText === 'groupes de mots à mettre en gras') {
+        this.main.logDebug(`Titre exact trouvé: "${heading.textContent}"`, 'info');
+        
+        // Chercher le container suivant avec les spans colorés
+        let nextElement = heading.nextElementSibling;
+        while (nextElement) {
+          if (nextElement.offsetParent !== null) {
+            const content = this.extractOnlyGroupeSpans(nextElement);
+            if (content) {
+              this.extractedData.set('groupes_mots_gras', content);
+              this.main.logDebug('Groupes mots gras extraits par titre exact', 'success');
+              return;
+            }
+          }
+          nextElement = nextElement.nextElementSibling;
+        }
+      }
+    }
+    
+    // 3. Fallback: chercher une div avec beaucoup de spans colorés de groupes
+    const allDivs = document.querySelectorAll('div');
+    for (const div of allDivs) {
+      if (div.offsetParent !== null) {
+        const spans = div.querySelectorAll('span[class*="keyword"], span[style*="background-color"]');
+        if (spans.length > 5 && spans.length < 50) { // Entre 5 et 50 spans pour éviter la page entière
+          const content = this.extractOnlyGroupeSpans(div);
+          if (content && content.length > 50 && content.length < 1000) { // Taille raisonnable
+            this.extractedData.set('groupes_mots_gras', content);
+            this.main.logDebug('Groupes mots gras extraits par fallback spans', 'success');
+            return;
           }
         }
       }
     }
     
-    if (content) {
-      this.extractedData.set('groupes_mots_gras', content);
-      this.main.logDebug('Groupes mots gras extraits', 'success');
-    } else {
-      this.main.logDebug('Groupes mots gras non trouvés', 'warning');
+    this.main.logDebug('Groupes mots gras non trouvés', 'warning');
+  }
+
+  // Extraire SEULEMENT les spans de groupes, pas tout le contenu
+  extractOnlyGroupeSpans(container) {
+    const groupes = [];
+    
+    // Méthode 1: Chercher les spans avec classes keyword spécifiques
+    const keywordSpans = container.querySelectorAll('span[class*="keyword"], span[class*="pgram"]');
+    if (keywordSpans.length > 0) {
+      keywordSpans.forEach(span => {
+        const text = span.textContent.trim();
+        // Filtrer pour garder seulement les groupes de mots (pas les mots isolés)
+        if (text.length > 5 && text.includes(' ') && !text.includes('NLP') && !text.includes('entités')) {
+          groupes.push(text);
+        }
+      });
     }
+    
+    // Méthode 2: Si pas de spans keyword, chercher les spans avec background-color
+    if (groupes.length === 0) {
+      const coloredSpans = container.querySelectorAll('span[style*="background-color"]');
+      coloredSpans.forEach(span => {
+        const text = span.textContent.trim();
+        if (text.length > 5 && text.includes(' ') && !text.includes('NLP') && !text.includes('entités')) {
+          groupes.push(text);
+        }
+      });
+    }
+    
+    // Méthode 3: Si pas de spans colorés, chercher tous les spans mais filtrer strictement
+    if (groupes.length === 0) {
+      const allSpans = container.querySelectorAll('span');
+      if (allSpans.length > 0 && allSpans.length < 100) { // Pas trop de spans pour éviter la page entière
+        allSpans.forEach(span => {
+          const text = span.textContent.trim();
+          // Très strict: doit contenir des espaces (groupe de mots) et avoir une taille raisonnable
+          if (text.length > 8 && 
+              text.length < 50 && 
+              text.includes(' ') && 
+              (text.includes('de ') || text.includes('du ') || text.includes('informatique') || text.includes('gestion'))) {
+            groupes.push(text);
+          }
+        });
+      }
+    }
+    
+    if (groupes.length > 0) {
+      // Enlever les doublons et formater
+      const uniqueGroupes = [...new Set(groupes)];
+      return `Groupes de mots à mettre en gras:\n\n${uniqueGroupes.join('\n')}`;
+    }
+    
+    return null;
   }
 
   // Extraire les prompts

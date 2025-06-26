@@ -58,180 +58,164 @@ class NLPManager {
   }
 
   // Trouver le conteneur des entités NLP
-  findNLPContainer() {
-    const selectors = [
-      '#load_entities',
-      '#entities_btn', 
-      '[id*="entities"]',
-      '[class*="entities"]',
-      '#liste_entites_nommes'
-    ];
-    
-    for (const selector of selectors) {
-      const element = document.querySelector(selector);
-      if (element) {
-        this.main.updateInspectorResults(`Container NLP trouvé: ${selector}`);
-        return element;
-      }
+findNLPContainer() {
+  // Priorité aux sélecteurs des captures
+  const containers = [
+    '#load_entities',           // État 1 et 2
+    '#liste_entites_nommes',    // État 3 
+    '[id*="entities"]',
+    '[class*="entities"]'
+  ];
+  
+  for (const selector of containers) {
+    const element = document.querySelector(selector);
+    if (element) {
+      this.main.updateInspectorResults(`✅ Container NLP trouvé: ${selector}`);
+      return element;
     }
-    
-    this.main.updateInspectorResults('❌ Container NLP non trouvé');
-    return null;
   }
+  
+  // Fallback : chercher par structure visible
+  const allElements = document.querySelectorAll('div, section');
+  for (const element of allElements) {
+    const text = element.textContent.toLowerCase();
+    if ((text.includes('entités nlp') || text.includes('obtenir les entités')) && 
+        element.offsetParent !== null) {
+      this.main.updateInspectorResults(`Container trouvé par contenu`);
+      return element;
+    }
+  }
+  
+  return null;
+}
 
   // Vérifier si les entités sont déjà générées (état 3)
-  isNLPAlreadyGenerated(content) {
-    const indicators = [
-      'entreprises', 'ensemble', 'coûts', 'normes',
-      'infogérance', 'accroissement', 'utilisateurs',
-      'Les entités NLP sont extraites',
-      'systèmes', 'équipes', 'évolutions', 'grâce'
-    ];
-    
-    const hasIndicators = indicators.some(indicator => 
-      content.toLowerCase().includes(indicator)
-    );
-    
-    const hasSubstantialContent = content.length > 200;
-    const notInProgress = !content.includes('Analyse de la SERP lancée') && 
-                         !content.includes('Obtenir les entités');
-    
-    return hasIndicators && hasSubstantialContent && notInProgress;
+isNLPAlreadyGenerated(content) {
+  // Mots-clés spécifiques des captures
+  const captureKeywords = [
+    'entreprises', 'ensemble', 'coûts', 'normes', 'réalité', 
+    'serveurs', 'productivité', 'usages', 'infogérance', 
+    'accroissement', 'utilisateurs', 'équipements', 'société',
+    'équipes', 'évolutions', 'grâce', 'façon', 'systèmes'
+  ];
+  
+  const lowerContent = content.toLowerCase();
+  
+  // Compter les mots-clés présents
+  const foundKeywords = captureKeywords.filter(keyword => 
+    lowerContent.includes(keyword)
+  );
+  
+  // Conditions pour considérer comme généré
+  const hasMultipleKeywords = foundKeywords.length >= 3;
+  const hasSubstantialContent = content.length > 200;
+  const notInProgress = !this.isNLPGenerating(content);
+  const notInitialState = !lowerContent.includes('obtenir les entités');
+  
+  if (hasMultipleKeywords && hasSubstantialContent && notInProgress && notInitialState) {
+    this.main.updateInspectorResults(`✅ État 3 détecté avec ${foundKeywords.length} mots-clés: ${foundKeywords.slice(0,3).join(', ')}...`);
+    return true;
   }
+  
+  return false;
+}
 
   // Vérifier si la génération est en cours (état 2)
-  isNLPGenerating(content) {
-    return content.includes('Analyse de la SERP lancée') || 
-           content.includes('Résultats dans') ||
-           content.includes('minutes');
-  }
+isNLPGenerating(content) {
+  const generatingIndicators = [
+    'analyse de la serp lancée',     // Exact des captures
+    'résultats dans',               // Exact des captures  
+    'minutes',                      // Exact des captures
+    'en cours',
+    'processing',
+    'loading'
+  ];
+  
+  const lowerContent = content.toLowerCase();
+  return generatingIndicators.some(indicator => lowerContent.includes(indicator));
+}
 
   // Trouver le bouton NLP (état 1)
-  findNLPButton() {
-    // Stratégie 1: Chercher par texte spécifique
-    const textButtons = Array.from(document.querySelectorAll('button, [role="button"], .commande, span')).filter(btn => {
-      const text = btn.textContent.toLowerCase();
-      return text.includes('obtenir les entités') && text.includes('nlp');
-    });
-    
-    if (textButtons.length > 0) {
-      this.main.updateInspectorResults(`Bouton trouvé par texte: "${textButtons[0].textContent.trim()}"`);
-      return textButtons[0];
-    }
-    
-    // Stratégie 2: Chercher par ID spécifique
-    const idSelectors = ['#toggleButton', '[id*="toggle"]', '[id*="entities"]'];
-    for (const selector of idSelectors) {
-      const element = document.querySelector(selector);
-      if (element && element.textContent.toLowerCase().includes('entités')) {
-        this.main.updateInspectorResults(`Bouton trouvé par ID: ${selector}`);
-        return element;
-      }
-    }
-    
-    // Stratégie 3: Chercher dans le container NLP
-    const nlpContainer = this.findNLPContainer();
-    if (nlpContainer) {
-      const innerButtons = nlpContainer.querySelectorAll('button, span[class*="commande"], [onclick]');
-      for (const btn of innerButtons) {
-        if (btn.textContent.toLowerCase().includes('obtenir')) {
-          this.main.updateInspectorResults(`Bouton trouvé dans container: "${btn.textContent.trim()}"`);
-          return btn;
-        }
-      }
-    }
-    
-    // Stratégie 4: Chercher par classe commande
-    const commandeButtons = document.querySelectorAll('.commande');
-    for (const btn of commandeButtons) {
-      if (btn.textContent.toLowerCase().includes('nlp') || btn.textContent.toLowerCase().includes('entités')) {
-        this.main.updateInspectorResults(`Bouton trouvé par classe commande: "${btn.textContent.trim()}"`);
-        return btn;
-      }
-    }
-    
-    return null;
+findNLPButton() {
+  // Stratégie prioritaire : sélecteur exact des captures
+  const exactButton = document.querySelector('#toggleButton');
+  if (exactButton && exactButton.textContent.toLowerCase().includes('obtenir les entités')) {
+    this.main.updateInspectorResults(`✅ Bouton trouvé par ID exact: "${exactButton.textContent.trim()}"`);
+    return exactButton;
   }
+
+  // Stratégie 2 : par structure HTML des captures
+  const spanButtons = document.querySelectorAll('span.commande');
+  for (const span of spanButtons) {
+    if (span.textContent.toLowerCase().includes('obtenir les entités nlp')) {
+      this.main.updateInspectorResults(`✅ Bouton trouvé par span.commande: "${span.textContent.trim()}"`);
+      return span;
+    }
+  }
+
+  // Vos stratégies existantes (gardées en fallback)
+  const textButtons = Array.from(document.querySelectorAll('button, [role="button"], .commande, span')).filter(btn => {
+    const text = btn.textContent.toLowerCase();
+    return text.includes('obtenir les entités') && text.includes('nlp');
+  });
+  
+  if (textButtons.length > 0) {
+    this.main.updateInspectorResults(`Bouton trouvé par texte: "${textButtons[0].textContent.trim()}"`);
+    return textButtons[0];
+  }
+
+  return null;
+}
 
   // Cliquer et attendre la génération NLP
   async clickAndWaitNLP(button, container) {
-    this.main.updateInspectorResults(`🎯 Clic sur: "${button.textContent.trim()}"`);
-    
-    // Surligner le bouton
-    this.highlightButton(button, 'processing');
-    
-    // Enregistrer l'état avant clic
-    const beforeContent = container ? container.textContent : '';
-    
-    // Cliquer
-    try {
-      button.click();
-      this.main.updateInspectorResults('✅ Bouton cliqué');
-    } catch (error) {
-      this.main.updateInspectorResults(`❌ Erreur clic: ${error.message}`);
-      this.highlightButton(button, 'error');
-      return false;
-    }
-    
-    // Attendre le changement d'état (passage à l'état 2)
-    await this.main.wait(2000);
-    
-    // Vérifier si on est passé en mode "génération"
-    const updatedContainer = this.findNLPContainer();
-    if (updatedContainer) {
-      const newContent = updatedContainer.textContent;
-      
-      if (this.isNLPGenerating(newContent)) {
-        this.main.updateInspectorResults('⏳ Génération lancée !');
-        this.highlightButton(button, 'processing');
-        
-        // Attendre la completion
-        const result = await this.waitForNLPCompletion(updatedContainer);
-        this.highlightButton(button, result ? 'success' : 'warning');
-        return result;
-      }
-    }
-    
-    this.main.updateInspectorResults('⚠️ Pas de changement détecté après clic');
-    this.highlightButton(button, 'warning');
+  this.main.updateInspectorResults(`🎯 Clic sur: "${button.textContent.trim()}"`);
+  this.main.updateInspectorResults(`📍 Container: ${container ? container.id || container.className : 'non trouvé'}`);
+  
+  // Surligner le bouton
+  this.highlightButton(button, 'processing');
+  
+  // Enregistrer l'état avant clic
+  const beforeContent = container ? container.textContent.trim() : '';
+  this.main.updateInspectorResults(`📝 Avant clic: "${beforeContent.substring(0, 50)}..."`);
+  
+  // Cliquer
+  try {
+    button.click();
+    this.main.updateInspectorResults('✅ Clic effectué');
+  } catch (error) {
+    this.main.updateInspectorResults(`❌ Erreur clic: ${error.message}`);
+    this.highlightButton(button, 'error');
     return false;
   }
-
-  // Attendre que la génération NLP soit terminée
-  async waitForNLPCompletion(container) {
-    this.main.updateInspectorResults('⏳ Attente completion NLP...');
+  
+  // Attendre le changement d'état
+  await this.main.wait(2000);
+  
+  // Vérifier le changement
+  const updatedContainer = this.findNLPContainer();
+  if (updatedContainer) {
+    const newContent = updatedContainer.textContent.trim();
+    this.main.updateInspectorResults(`📝 Après clic: "${newContent.substring(0, 50)}..."`);
     
-    return new Promise((resolve) => {
-      let attempts = 0;
-      const maxAttempts = 180; // 3 minutes max
+    if (this.isNLPGenerating(newContent)) {
+      this.main.updateInspectorResults('⏳ État 2 détecté - Génération lancée !');
+      this.highlightButton(button, 'processing');
       
-      const checkInterval = setInterval(() => {
-        attempts++;
-        const currentContent = container.textContent;
-        
-        // Vérifier si terminé (état 3)
-        if (this.isNLPAlreadyGenerated(currentContent)) {
-          this.main.updateInspectorResults(`✅ NLP générées après ${attempts} secondes !`);
-          this.main.updateInspectorResults(`Entités trouvées: ${this.countNLPEntities(currentContent)}`);
-          clearInterval(checkInterval);
-          resolve(true);
-          return;
-        }
-        
-        // Afficher le progrès
-        if (attempts % 10 === 0) {
-          this.main.updateInspectorResults(`⏳ ${attempts}s écoulées...`);
-        }
-        
-        // Timeout
-        if (attempts >= maxAttempts) {
-          this.main.updateInspectorResults('⚠️ Timeout - Génération trop longue');
-          clearInterval(checkInterval);
-          resolve(false);
-        }
-      }, 1000);
-    });
+      const result = await this.waitForNLPCompletion(updatedContainer);
+      this.highlightButton(button, result ? 'success' : 'warning');
+      return result;
+    } else if (this.isNLPAlreadyGenerated(newContent)) {
+      this.main.updateInspectorResults('🚀 État 3 détecté - Déjà généré !');
+      this.highlightButton(button, 'success');
+      return true;
+    }
   }
+  
+  this.main.updateInspectorResults('⚠️ Changement d\'état non détecté');
+  this.highlightButton(button, 'warning');
+  return false;
+}
 
   // Compter le nombre d'entités NLP trouvées
   countNLPEntities(content) {
